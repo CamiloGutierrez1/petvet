@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "nombre": "Tobby",
+    "especie": "PERRO",
+    "raza": "Golden Retriever",
+    "fechaNacimiento": "2021-04-18",
+    "peso": 31.5,
+    "duenoId": 1
+  },
+  {
+    "id": 2,
+    "nombre": "Misha",
+    "especie": "GATO",
+    "raza": "Criollo",
+    "fechaNacimiento": "2023-09-02",
+    "peso": 4.2,
+    "duenoId": 1
+  },
+  {
+    "id": 3,
+    "nombre": "Kiwi",
+    "especie": "AVE",
+    "raza": "Periquito australiano",
+    "fechaNacimiento": "2024-02-11",
+    "peso": 0.04,
+    "duenoId": 2
+  }
+]
