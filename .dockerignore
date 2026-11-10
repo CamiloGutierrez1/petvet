@@ -1,0 +1,10 @@
+.git
+.idea
+.vscode
+.DS_Store
+.env
+.env.*
+!.env.example
+**/target
+**/node_modules
+docs
