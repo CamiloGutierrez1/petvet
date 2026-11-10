@@ -1,0 +1,118 @@
+name: petvet
+
+services:
+  postgres-mascotas:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mascotas
+      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - mascotas-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  postgres-citas:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: citas
+      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - citas-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  postgres-notificaciones:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: notificaciones
+      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - notificaciones-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${PETVET_RABBITMQ_USER:-petvet}
+      RABBITMQ_DEFAULT_PASS: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  ms-citas-historial:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ms-citas-historial/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-citas:5432/citas
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:-petvet}
+      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      # Nombre y puerto previstos para Mascotas y Dueños dentro del Compose.
+      PETVET_MASCOTAS_URL: http://ms-mascotas-duenos:8081
+      PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      PETVET_AGENDA_ZONA: ${PETVET_AGENDA_ZONA:-America/Bogota}
+      PETVET_AGENDA_APERTURA: ${PETVET_AGENDA_APERTURA:-08:00}
+      PETVET_AGENDA_CIERRE: ${PETVET_AGENDA_CIERRE:-18:00}
+      PETVET_AGENDA_DURACION_MINUTOS: ${PETVET_AGENDA_DURACION_MINUTOS:-30}
+      # Revisión diaria. El Compose de demo ajusta el cron a cada minuto.
+      PETVET_VACUNAS_CRON: ${PETVET_VACUNAS_CRON:-0 0 8 * * *}
+      PETVET_VACUNAS_DIAS_AVISO: ${PETVET_VACUNAS_DIAS_AVISO:-7}
+      PETVET_VACUNAS_HABILITADAS: ${PETVET_VACUNAS_HABILITADAS:-true}
+      # El publicador reintenta los eventos pendientes de la outbox.
+      PETVET_EVENTOS_HABILITADOS: ${PETVET_EVENTOS_HABILITADOS:-true}
+      PETVET_EVENTOS_INTERVALO_MS: ${PETVET_EVENTOS_INTERVALO_MS:-5000}
+    ports:
+      - "127.0.0.1:8082:8082"
+    depends_on:
+      postgres-citas:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  mascotas-data:
+  citas-data:
+  notificaciones-data:
+  rabbitmq-data:
