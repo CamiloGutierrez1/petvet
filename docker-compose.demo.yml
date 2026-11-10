@@ -1,0 +1,25 @@
+services:
+  mascotas-demo:
+    image: python:3.12-alpine
+    profiles: [demo]
+    working_dir: /app
+    command: ["python", "-u", "/app/mascotas_demo.py"]
+    volumes:
+      - ./scripts/mascotas_demo.py:/app/mascotas_demo.py:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8080/actuator/health', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  ms-citas-historial:
+    environment:
+      PETVET_MASCOTAS_URL: http://mascotas-demo:8080
+      PETVET_VACUNAS_CRON: "0 * * * * *"
+    depends_on:
+      mascotas-demo:
+        condition: service_healthy
