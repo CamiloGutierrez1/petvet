@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "nombre": "Laura Méndez",
+    "email": "laura.mendez@correo.com",
+    "telefono": "3104567812"
+  },
+  {
+    "id": 2,
+    "nombre": "Santiago Rojas",
+    "email": "santiago.rojas@correo.com",
+    "telefono": "3157781204"
+  }
+]

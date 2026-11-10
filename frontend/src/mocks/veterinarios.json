@@ -1,0 +1,8 @@
+[
+  {
+    "id": 1,
+    "nombre": "Dra. Paula Castaño",
+    "especialidad": "Medicina general"
+  },
+  { "id": 2, "nombre": "Dr. Andrés Villamil", "especialidad": "Dermatología" }
+]

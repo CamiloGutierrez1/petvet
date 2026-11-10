@@ -1,0 +1,176 @@
+# PetVet – Frontend
+
+Aplicación web de PetVet. Es la base sobre la que Camilo construye las vistas del **dueño** y Daza las del **veterinario**. Esta base todavía no tiene pantallas reales: trae la configuración, el cliente HTTP, los tipos de los contratos, los datos simulados y las rutas.
+
+> Estado: base lista (martes 10 nov). La paleta, la tipografía y el logo se definen la tarde del martes 10 entre Camilo y Daza.
+
+## Cómo levantarlo
+
+Necesitas Node 20 o superior.
+
+```bash
+cd frontend
+npm install
+cp .env.example .env     # en Windows (Git Bash) funciona igual
+npm run dev              # abre http://localhost:5173
+```
+
+| Script                 | Qué hace                                      |
+| ---------------------- | --------------------------------------------- |
+| `npm run dev`          | Servidor de desarrollo con recarga automática |
+| `npm run build`        | Revisa los tipos con TypeScript y compila     |
+| `npm run lint`         | ESLint (errores de código y reglas de React)  |
+| `npm run format`       | Prettier: formatea todo el proyecto           |
+| `npm run format:check` | Prettier: solo revisa, sin cambiar nada       |
+
+Antes de abrir un PR: `npm run lint` y `npm run build` sin errores.
+
+## Stack
+
+| Qué         | Tecnología                                                     |
+| ----------- | -------------------------------------------------------------- |
+| Base        | React 19 + Vite 8 + TypeScript 6                               |
+| Estilos     | Tailwind CSS v4 + shadcn/ui (base Radix), íconos lucide-react  |
+| Datos       | TanStack Query 5 + Axios                                       |
+| Formularios | React Hook Form + Zod + `@hookform/resolvers`                  |
+| Rutas       | React Router 7                                                 |
+| Toasts      | sonner (ya montado en `main.tsx`)                              |
+| Calidad     | ESLint + Prettier (con orden automático de clases de Tailwind) |
+
+## Estructura
+
+```
+src/
+├── api/
+│   ├── http.ts        clientes Axios (mascotasApi, citasApi) e interruptor de mocks
+│   ├── types.ts       tipos de los contratos (única dependencia con el back)
+│   ├── mascotas.ts    funciones de ms-mascotas-duenos (8081)
+│   └── citas.ts       funciones de ms-citas-historial (8082)
+├── mocks/             JSON simulados con la forma de los contratos
+├── components/
+│   ├── ui/            componentes de shadcn (no editar a mano salvo estilos)
+│   └── ...            componentes propios compartidos
+├── features/
+│   ├── duenos-mascotas/   Camilo
+│   ├── citas/             Camilo (agendar)
+│   └── veterinario/       Daza (agenda, consulta, historial)
+├── layouts/           LayoutDueno.tsx, LayoutVeterinario.tsx (miércoles 11)
+├── lib/               utilidades (cn, queryClient)
+├── routes/router.tsx  definición de rutas
+└── main.tsx           punto de entrada: QueryClient + Router + Toaster
+```
+
+Regla: **las páginas solo arman la vista**. Las llamadas a la API van en `src/api` y se usan desde hooks con TanStack Query. Ninguna página usa Axios directamente.
+
+## Datos: API real o datos simulados
+
+En `.env`:
+
+```
+VITE_API_MASCOTAS=http://localhost:8081/api
+VITE_API_CITAS=http://localhost:8082/api
+VITE_USE_MOCKS=true
+```
+
+Con `VITE_USE_MOCKS=true`, las funciones de `src/api` responden con los JSON de `src/mocks` (con 400 ms de espera, para ver los skeletons). Con `false`, llaman a la API real. Las páginas no cambian: pasar a la API real el sábado 14 es cambiar esa variable y reiniciar `npm run dev`.
+
+En modo mocks, lo que se registra (mascotas, citas, consultas) queda en memoria hasta recargar la página, así que se pueden probar los flujos completos.
+
+### Funciones disponibles
+
+`src/api/mascotas.ts`: `registrarDueno`, `getDuenos`, `getDueno`, `registrarMascota`, `getMascotasDeDueno`, `getMascota` (ficha con nombre y correo del dueño), `editarMascota`, `subirFotoMascota`.
+
+`src/api/citas.ts`: `getVeterinarios`, `getDisponibilidad`, `agendarCita`, `getCitasDeMascota`, `getAgendaVeterinario`, `cancelarCita`, `registrarConsulta`, `getHistorial`, `getProximasVacunas`.
+
+**Para las vistas del veterinario (Daza):** `getAgendaVeterinario(veterinarioId, "2026-11-20")`, `registrarConsulta(citaId, datos)`, `getHistorial(mascotaId)`, `getProximasVacunas(mascotaId)`, `getMascota(id)`, `cancelarCita(id)` y `getVeterinarios()`. Los mocks tienen citas para el **20 de noviembre** (veterinarios 1 y 2).
+
+Ejemplo de uso en un componente:
+
+```tsx
+import { useQuery } from "@tanstack/react-query"
+import { getAgendaVeterinario } from "@/api/citas"
+
+const {
+  data: citas,
+  isLoading,
+  error,
+  refetch,
+} = useQuery({
+  queryKey: ["agenda", veterinarioId, fecha],
+  queryFn: () => getAgendaVeterinario(veterinarioId, fecha),
+})
+// isLoading → skeleton · error → mensaje claro con "Reintentar" · [] → estado vacío
+```
+
+### Tipos
+
+Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Cita`, `RegistrarConsulta`, `RegistroHistorial`, etc.). Los campos marcados con `// confirmar con back` no están cerrados en el contrato: si Jersson o Pia los cambian, se ajustan **solo ahí** y TypeScript marca todo lo que haya que corregir.
+
+## Rutas
+
+Ya están definidas en `src/routes/router.tsx`, con una página provisional que dice de quién es cada vista. Para construir una vista, se reemplaza `<PaginaPendiente ... />` por el componente real.
+
+| Ruta                                         | Vista               | Responsable |
+| -------------------------------------------- | ------------------- | ----------- |
+| `/`                                          | Selector de perfil  | Camilo      |
+| `/dueno/registro`                            | Registro de dueño   | Camilo      |
+| `/dueno/mascotas`                            | Mis mascotas        | Camilo      |
+| `/dueno/mascotas/nueva`                      | Registrar mascota   | Camilo      |
+| `/dueno/mascotas/:mascotaId`                 | Ficha de la mascota | Camilo      |
+| `/dueno/mascotas/:mascotaId/editar`          | Editar mascota      | Camilo      |
+| `/dueno/citas/nueva`                         | Agendar cita        | Camilo      |
+| `/veterinario/agenda`                        | Agenda del día      | Daza        |
+| `/veterinario/citas/:citaId/consulta`        | Registrar consulta  | Daza        |
+| `/veterinario/mascotas/:mascotaId/historial` | Historial clínico   | Daza        |
+
+Si necesitas otra ruta, agrégala en tu sección del router y menciónalo en el PR.
+
+## Componentes de shadcn/ui
+
+Instalados en `src/components/ui/`: avatar, badge, button, calendar, card, dialog, dropdown-menu, field, input, label, select, separator, skeleton, sonner, table y textarea.
+
+Para agregar otro: `npx shadcn@latest add <nombre>` desde `frontend/`. Avisa en el grupo para no instalar lo mismo dos veces.
+
+**Formularios:** la versión actual de shadcn ya no trae el componente `form`; lo reemplazó por **`field`** (`Field`, `FieldLabel`, `FieldError`, etc.). Los formularios se hacen con React Hook Form + Zod para el estado y la validación, y `field` para la parte visual. Los dos usamos esta misma forma.
+
+## Estilo y diseño
+
+- Colores y tipografía son **tokens** en `src/index.css` (Tailwind v4 ya no usa `tailwind.config`). Se usan con clases como `bg-primary`, `text-muted-foreground`, `border-border`. **Nada de colores sueltos** (`bg-[#12a4b0]`, `text-teal-600`).
+- Hoy los tokens tienen los grises por defecto de shadcn y la fuente Geist; se reemplazan por la identidad de PetVet esta tarde.
+- Siempre manejar carga (skeleton), vacío y error. Nunca pantallas en blanco.
+- Espaciado en múltiplos de 4. Sin degradados morados, emojis como íconos ni textos de relleno.
+
+## Editor y formato
+
+- Al abrir el repo, VS Code sugiere las extensiones: ESLint, Prettier, Tailwind CSS IntelliSense y Live Share. Instálalas.
+- `.vscode/settings.json` (en la raíz del repo) formatea con Prettier al guardar. Así los dos producimos el mismo formato y no hay conflictos falsos en Git.
+- Importa con el alias `@/` en vez de rutas relativas largas: `import { Button } from "@/components/ui/button"`.
+
+## Decisiones tomadas en la base (y por qué)
+
+| Decisión                                       | Motivo                                                                                                                                                                                                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript 6.0 en vez del 7 que trae Vite      | `typescript-eslint` aún no soporta TS 7, y el plan pide ESLint. Para un proyecto de este tamaño no hay diferencia práctica.                                                                                                 |
+| ESLint + Prettier en vez de oxlint             | Es lo acordado en el plan; ESLint tiene las reglas de React Hooks.                                                                                                                                                          |
+| `field` en vez de `form` de shadcn             | `form` ya no existe en la versión actual de shadcn.                                                                                                                                                                         |
+| shadcn con base Radix y preset Nova            | Radix es la base más documentada; Nova trae lucide como librería de íconos.                                                                                                                                                 |
+| Paquete `cn` (de shadcn) en `src/lib/utils.ts` | Así lo genera la versión actual de shadcn; reemplaza a `clsx` + `tailwind-merge`.                                                                                                                                           |
+| `npm audit` muestra avisos                     | Todos vienen de herramientas de desarrollo (ESLint, shadcn CLI). En el código que llega al navegador hay 0 vulnerabilidades (`npm audit --omit=dev`). No ejecutar `npm audit fix --force`: baja shadcn a una versión vieja. |
+
+## Pendientes y coordinación
+
+| Qué                                                                                                                         | Quién                    | Cuándo           |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ---------------- |
+| Paleta, tipografía y logo como tokens en `src/index.css`                                                                    | Camilo y Daza            | Mar 10 (tarde)   |
+| Layout con barra lateral, selector de perfil y rutas con layouts                                                            | Camilo                   | Mié 11           |
+| Componentes compartidos (badge de estado de cita, tabla, skeletons) en `src/components/`                                    | Daza                     | Mié 11           |
+| Interceptor de errores de Axios en `src/api/http.ts` (muestra `ApiError` con un toast; 409 → "Ese horario ya está ocupado") | Daza                     | Jue 12           |
+| Cerrar los campos `// confirmar con back` de `types.ts`                                                                     | Camilo con Pia y Jersson | Antes del sáb 14 |
+| Pasar a la API real (`VITE_USE_MOCKS=false`)                                                                                | Camilo y Daza            | Sáb 14           |
+
+## Flujo de Git
+
+- Rama por tarea desde `develop`: `feature/front-<tarea>` (por ejemplo `feature/front-agenda-veterinario`).
+- Commits pequeños: `feat(front): ...`, `fix(front): ...`, `chore: ...`.
+- PR hacia `develop`; Camilo y Daza se revisan mutuamente el mismo día.
+- Nunca subir `.env`, `node_modules/` ni `dist/` (ya están en el `.gitignore`).

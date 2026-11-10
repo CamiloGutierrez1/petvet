@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "citaId": 1,
+    "mascotaId": 1,
+    "veterinarioId": 1,
+    "fecha": "2026-10-28T10:00:00",
+    "tipoConsulta": "GENERAL",
+    "diagnostico": "Otitis leve en oído derecho",
+    "vacunasAplicadas": [],
+    "tratamientos": ["Gotas óticas 7 días"],
+    "examenes": ["Otoscopia"],
+    "observaciones": "Control en 2 semanas",
+    "proximoControl": "2026-11-11"
+  }
+]
