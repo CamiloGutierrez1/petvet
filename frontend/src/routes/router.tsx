@@ -1,53 +1,66 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { PaginaPendiente } from "@/components/pagina-pendiente"
+import { RequierePerfil } from "@/features/perfil/requiere-perfil"
+import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
+import { LayoutDueno } from "@/layouts/LayoutDueno"
+import { LayoutVeterinario } from "@/layouts/LayoutVeterinario"
 
-// Rutas de la aplicación. Por ahora cada una muestra una página provisional;
-// se reemplazan por las vistas reales a medida que se construyen.
-// Los layouts (LayoutDueno, LayoutVeterinario) se agregan el miércoles 11.
+// Rutas de la aplicación. Las vistas que aún no existen muestran una página
+// provisional; se reemplazan a medida que se construyen.
+// Cada grupo: RequierePerfil (exige ese perfil) → Layout (barra superior) → vista.
 export const router = createBrowserRouter([
+  { path: "/", element: <SelectorPerfilPage /> },
   {
-    path: "/",
+    path: "/registro",
     element: (
-      <PaginaPendiente titulo="Selector de perfil" responsable="Camilo" />
+      <PaginaPendiente
+        titulo="Registro de dueño"
+        responsable="Camilo"
+        independiente
+      />
     ),
   },
 
   // ---------- Dueño (Camilo) ----------
   {
     path: "/dueno",
+    element: <RequierePerfil tipo="dueno" />,
     children: [
-      { index: true, element: <Navigate to="mascotas" replace /> },
       {
-        path: "registro",
-        element: (
-          <PaginaPendiente titulo="Registro de dueño" responsable="Camilo" />
-        ),
-      },
-      {
-        path: "mascotas",
-        element: <PaginaPendiente titulo="Mis mascotas" responsable="Camilo" />,
-      },
-      {
-        path: "mascotas/nueva",
-        element: (
-          <PaginaPendiente titulo="Registrar mascota" responsable="Camilo" />
-        ),
-      },
-      {
-        path: "mascotas/:mascotaId",
-        element: (
-          <PaginaPendiente titulo="Ficha de la mascota" responsable="Camilo" />
-        ),
-      },
-      {
-        path: "mascotas/:mascotaId/editar",
-        element: (
-          <PaginaPendiente titulo="Editar mascota" responsable="Camilo" />
-        ),
-      },
-      {
-        path: "citas/nueva",
-        element: <PaginaPendiente titulo="Agendar cita" responsable="Camilo" />,
+        element: <LayoutDueno />,
+        children: [
+          {
+            index: true,
+            element: <PaginaPendiente titulo="Inicio" responsable="Camilo" />,
+          },
+          {
+            path: "mascotas",
+            element: (
+              <PaginaPendiente titulo="Mis mascotas" responsable="Camilo" />
+            ),
+          },
+          {
+            path: "mascotas/:mascotaId",
+            element: (
+              <PaginaPendiente
+                titulo="Ficha de la mascota"
+                responsable="Camilo"
+              />
+            ),
+          },
+          {
+            path: "agendar",
+            element: (
+              <PaginaPendiente titulo="Agendar cita" responsable="Camilo" />
+            ),
+          },
+          {
+            path: "citas",
+            element: (
+              <PaginaPendiente titulo="Mis citas" responsable="Camilo" />
+            ),
+          },
+        ],
       },
     ],
   },
@@ -55,23 +68,35 @@ export const router = createBrowserRouter([
   // ---------- Veterinario (Daza) ----------
   {
     path: "/veterinario",
+    element: <RequierePerfil tipo="veterinario" />,
     children: [
-      { index: true, element: <Navigate to="agenda" replace /> },
       {
-        path: "agenda",
-        element: <PaginaPendiente titulo="Agenda del día" responsable="Daza" />,
-      },
-      {
-        path: "citas/:citaId/consulta",
-        element: (
-          <PaginaPendiente titulo="Registrar consulta" responsable="Daza" />
-        ),
-      },
-      {
-        path: "mascotas/:mascotaId/historial",
-        element: (
-          <PaginaPendiente titulo="Historial clínico" responsable="Daza" />
-        ),
+        element: <LayoutVeterinario />,
+        children: [
+          { index: true, element: <Navigate to="agenda" replace /> },
+          {
+            path: "agenda",
+            element: (
+              <PaginaPendiente titulo="Agenda del día" responsable="Daza" />
+            ),
+          },
+          {
+            path: "consulta/:citaId",
+            element: (
+              <PaginaPendiente titulo="Registrar consulta" responsable="Daza" />
+            ),
+          },
+          {
+            path: "pacientes",
+            element: <PaginaPendiente titulo="Pacientes" responsable="Daza" />,
+          },
+          {
+            path: "pacientes/:mascotaId",
+            element: (
+              <PaginaPendiente titulo="Ficha del paciente" responsable="Daza" />
+            ),
+          },
+        ],
       },
     ],
   },
