@@ -91,7 +91,9 @@ Todos los errores llegan como `{ "error": "CODIGO", "detalle": "Mensaje en espa�
 | 503  | `DEPENDENCIA_NO_DISPONIBLE` | Citas no pudo consultar a Mascotas (servicio caído) |
 | 500  | `ERROR_INTERNO`             | Error no previsto                                   |
 
-**El mensaje para el usuario está en `detalle`**, no en `error` (que es un código para el programa). En el código se lee así: `(err as AxiosError<ApiError>).response?.data?.detalle`.
+**El mensaje para el usuario está en `detalle`**, no en `error` (que es un código para el programa). Para leerlo usa `mensajeDeError(error, "Texto por defecto")` de `src/api/errores.ts`: devuelve el `detalle`, un aviso de conexión si el servidor no responde, o el texto por defecto. `estadoHttp(error)` devuelve el código (409, 404, 503...).
+
+Ojo: en modo mocks los errores se lanzan directo desde las funciones de `src/api`, sin pasar por Axios, así que un interceptor de Axios no los ve. Para mostrar errores de forma global conviene usar el `onError` de TanStack Query (`QueryCache`/`MutationCache` en `src/lib/query-client.ts`) junto con `mensajeDeError`.
 
 ### Funciones disponibles
 
@@ -132,7 +134,7 @@ Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una p
 | Ruta                                | Vista                                     | Responsable | Estado    |
 | ----------------------------------- | ----------------------------------------- | ----------- | --------- |
 | `/`                                 | Selector de perfil                        | Camilo      | Listo     |
-| `/registro`                         | Registro de dueño (fuera de los layouts)  | Camilo      | Pendiente |
+| `/registro`                         | Registro de dueño (fuera de los layouts)  | Camilo      | Listo     |
 | `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Pendiente |
 | `/dueno/mascotas`                   | Mis mascotas                              | Camilo      | Pendiente |
 | `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Pendiente |

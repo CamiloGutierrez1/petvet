@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { PaginaPendiente } from "@/components/pagina-pendiente"
+import { RegistroDuenoPage } from "@/features/duenos-mascotas/registro-dueno-page"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
 import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
 import { LayoutDueno } from "@/layouts/LayoutDueno"
@@ -10,16 +11,7 @@ import { LayoutVeterinario } from "@/layouts/LayoutVeterinario"
 // Cada grupo: RequierePerfil (exige ese perfil) → Layout (barra superior) → vista.
 export const router = createBrowserRouter([
   { path: "/", element: <SelectorPerfilPage /> },
-  {
-    path: "/registro",
-    element: (
-      <PaginaPendiente
-        titulo="Registro de dueño"
-        responsable="Camilo"
-        independiente
-      />
-    ),
-  },
+  { path: "/registro", element: <RegistroDuenoPage /> },
 
   // ---------- Dueño (Camilo) ----------
   {
