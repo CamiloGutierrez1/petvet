@@ -123,6 +123,19 @@ const {
 // isLoading → skeleton · error → mensaje claro con "Reintentar" · [] → estado vacío
 ```
 
+### Formatos compartidos (`src/lib/formato.ts`)
+
+Para que las dos mitades del front muestren fechas y textos igual:
+
+| Función                          | Ejemplo                                             |
+| -------------------------------- | --------------------------------------------------- |
+| `formatearFecha("2026-12-12")`   | `12 dic 2026`                                       |
+| `formatearFechaCorta(...)`       | `12 dic` (ej. "Próxima vacuna: Rabia, 12 dic")      |
+| `formatearHora(fechaHora)`       | `9:30 a. m.`                                        |
+| `formatearFechaHora(fechaHora)`  | `vie 20 nov 2026, 9:30 a. m.`                       |
+| `textoPlazo("2026-12-12")`       | `en 31 días`, `mañana`, `hoy`, `venció hace 3 días` |
+| `etiquetaServicio("VACUNACION")` | `Vacunación` (y `TIPOS_SERVICIO` para un `select`)  |
+
 ### Tipos
 
 Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Cita`, `RegistrarConsulta`, `RegistroHistorial`, etc.). Los tipos de Citas ya están confirmados con el servicio de Jersson. Los campos de Mascotas marcados con `// confirmar con back` siguen pendientes con Pia: si cambian, se ajustan **solo ahí** y TypeScript marca todo lo que haya que corregir.
@@ -137,7 +150,7 @@ Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una p
 | `/registro`                         | Registro de dueño (fuera de los layouts)  | Camilo      | Listo     |
 | `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Pendiente |
 | `/dueno/mascotas`                   | Mis mascotas                              | Camilo      | Listo     |
-| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Pendiente |
+| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Listo     |
 | `/dueno/agendar`                    | Agendar cita                              | Camilo      | Pendiente |
 | `/dueno/citas`                      | Mis citas                                 | Camilo      | Pendiente |
 | `/veterinario/agenda`               | Agenda del día                            | Daza        | Pendiente |
