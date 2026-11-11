@@ -38,6 +38,15 @@ function buscarMascota(id: number): Mascota {
 
 export async function registrarDueno(datos: NuevoDueno): Promise<Dueno> {
   if (USE_MOCKS) {
+    // confirmar con back: que Mascotas responda 409 si el correo ya existe
+    const correo = datos.email.trim().toLowerCase()
+    if (duenos.some((d) => d.email.toLowerCase() === correo)) {
+      throw errorSimulado(
+        409,
+        "CONFLICTO",
+        "Ya hay un dueño registrado con ese correo.",
+      )
+    }
     const dueno = { id: siguienteId(duenos), ...datos }
     duenos.push(dueno)
     return simularRespuesta(dueno)
