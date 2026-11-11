@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { Logo } from "@/components/logo"
 
 interface PaginaPendienteProps {
   titulo: string
@@ -9,6 +10,7 @@ interface PaginaPendienteProps {
 export function PaginaPendiente({ titulo, responsable }: PaginaPendienteProps) {
   return (
     <main className="mx-auto flex min-h-svh max-w-xl flex-col justify-center gap-2 p-8">
+      <Logo className="mb-6" />
       <p className="text-sm text-muted-foreground">Vista pendiente</p>
       <h1 className="text-2xl font-semibold">{titulo}</h1>
       <p className="text-muted-foreground">Responsable: {responsable}</p>

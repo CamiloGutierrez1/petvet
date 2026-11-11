@@ -154,8 +154,31 @@ Para agregar otro: `npx shadcn@latest add <nombre>` desde `frontend/`. Avisa en 
 ## Estilo y diseño
 
 - Colores y tipografía son **tokens** en `src/index.css` (Tailwind v4 ya no usa `tailwind.config`). Se usan con clases como `bg-primary`, `text-muted-foreground`, `border-border`. **Nada de colores sueltos** (`bg-[#12a4b0]`, `text-teal-600`).
-- Hoy los tokens tienen los grises por defecto de shadcn y la fuente Geist; se reemplazan por la identidad de PetVet esta tarde.
 - Siempre manejar carga (skeleton), vacío y error. Nunca pantallas en blanco.
+
+### Identidad de PetVet
+
+Tipografía única: **Plus Jakarta Sans** (400, 500, 600, 700), cargada desde Google Fonts en `index.html`. Solo modo claro.
+
+| Token (clase)                           | Color                           | Uso                                                  |
+| --------------------------------------- | ------------------------------- | ---------------------------------------------------- |
+| `primary` / `primary-foreground`        | `#1E5A4C` / `#FFFFFF`           | Botones principales, enlaces, foco (`ring`)          |
+| `background`                            | `#F7F8F7`                       | Fondo de la app                                      |
+| `card`, `popover`                       | `#FFFFFF`                       | Tarjetas, menús, diálogos                            |
+| `foreground` / `muted-foreground`       | `#141A18` / `#5B6661`           | Texto principal / secundario                         |
+| `border` / `input`                      | `#E3E8E5` / `#D5DDD9`           | Bordes de tarjetas / de inputs y botones secundarios |
+| `brand-soft`                            | `#E8F1EE`                       | Menú activo, avatares, selección                     |
+| `alerta`, `alerta-soft`, `alerta-texto` | `#B86E00`, `#FFF3DF`, `#7A4900` | **Solo** vacunas pendientes                          |
+| `estado-agendada` / `-soft`             | `#24508F` / `#E5EDFA`           | `EstadoCitaBadge`                                    |
+| `estado-completada` / `-soft`           | `#1E6B4A` / `#E3F1EB`           | `EstadoCitaBadge`                                    |
+| `estado-cancelada` / `-soft`            | `#5B6661` / `#EFF1F0`           | `EstadoCitaBadge`                                    |
+
+Radios: 10px por defecto (`rounded-lg`) y 16px en tarjetas (`rounded-xl`).
+
+Logo: `<Logo />` (símbolo + "PetVet") o `<LogoSimbolo />` (solo la placa con la huella), en `src/components/logo.tsx`. El mismo símbolo es el favicon (`public/favicon.svg`).
+
+Ejemplos: `bg-brand-soft text-primary` (enlace activo), `bg-alerta-soft text-alerta-texto` (aviso de vacuna), `text-muted-foreground` (texto secundario).
+
 - Espaciado en múltiplos de 4. Sin degradados morados, emojis como íconos ni textos de relleno.
 
 ## Editor y formato

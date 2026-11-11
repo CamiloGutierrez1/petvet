@@ -5,15 +5,15 @@ import { cn } from "@/lib/utils"
 const ESTILOS: Record<EstadoCita, { etiqueta: string; clase: string }> = {
   AGENDADA: {
     etiqueta: "Agendada",
-    clase: "bg-estado-agendada/10 text-estado-agendada",
+    clase: "bg-estado-agendada-soft text-estado-agendada",
   },
   COMPLETADA: {
     etiqueta: "Completada",
-    clase: "bg-estado-completada/10 text-estado-completada",
+    clase: "bg-estado-completada-soft text-estado-completada",
   },
   CANCELADA: {
     etiqueta: "Cancelada",
-    clase: "bg-estado-cancelada/10 text-estado-cancelada",
+    clase: "bg-estado-cancelada-soft text-estado-cancelada",
   },
 }
 
