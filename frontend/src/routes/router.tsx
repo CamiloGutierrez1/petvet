@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { PaginaPendiente } from "@/components/pagina-pendiente"
+import { MisMascotasPage } from "@/features/duenos-mascotas/mis-mascotas-page"
 import { RegistroDuenoPage } from "@/features/duenos-mascotas/registro-dueno-page"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
 import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
@@ -27,9 +28,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "mascotas",
-            element: (
-              <PaginaPendiente titulo="Mis mascotas" responsable="Camilo" />
-            ),
+            element: <MisMascotasPage />,
           },
           {
             path: "mascotas/:mascotaId",

@@ -6,6 +6,7 @@
     "raza": "Golden Retriever",
     "fechaNacimiento": "2021-04-18",
     "peso": 31.5,
+    "fotoUrl": "/mascotas/tobby.jpg",
     "duenoId": 1
   },
   {
@@ -15,6 +16,7 @@
     "raza": "Criollo",
     "fechaNacimiento": "2023-09-02",
     "peso": 4.2,
+    "fotoUrl": "/mascotas/misha.jpg",
     "duenoId": 1
   },
   {
@@ -24,6 +26,7 @@
     "raza": "Periquito australiano",
     "fechaNacimiento": "2024-02-11",
     "peso": 0.04,
+    "fotoUrl": "/mascotas/kiwi.jpg",
     "duenoId": 2
   }
 ]
