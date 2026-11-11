@@ -51,13 +51,14 @@ src/
 │   ├── ui/            componentes de shadcn (no editar a mano salvo estilos)
 │   └── ...            componentes propios compartidos
 ├── features/
+│   ├── perfil/            Camilo (selector, PerfilProvider, usePerfil, RequierePerfil)
 │   ├── duenos-mascotas/   Camilo
 │   ├── citas/             Camilo (agendar)
-│   └── veterinario/       Daza (agenda, consulta, historial)
-├── layouts/           LayoutDueno.tsx, LayoutVeterinario.tsx (miércoles 11)
+│   └── veterinario/       Daza (agenda, consulta, pacientes)
+├── layouts/           LayoutDueno.tsx, LayoutVeterinario.tsx y barra-superior.tsx
 ├── lib/               utilidades (cn, queryClient)
 ├── routes/router.tsx  definición de rutas
-└── main.tsx           punto de entrada: QueryClient + Router + Toaster
+└── main.tsx           punto de entrada: QueryClient + PerfilProvider + Router + Toaster
 ```
 
 Regla: **las páginas solo arman la vista**. Las llamadas a la API van en `src/api` y se usan desde hooks con TanStack Query. Ninguna página usa Axios directamente.
@@ -126,22 +127,30 @@ Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Ci
 
 ## Rutas
 
-Ya están definidas en `src/routes/router.tsx`, con una página provisional que dice de quién es cada vista. Para construir una vista, se reemplaza `<PaginaPendiente ... />` por el componente real.
+Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una página provisional; para construir una, se reemplaza `<PaginaPendiente ... />` por el componente real.
 
-| Ruta                                         | Vista               | Responsable |
-| -------------------------------------------- | ------------------- | ----------- |
-| `/`                                          | Selector de perfil  | Camilo      |
-| `/dueno/registro`                            | Registro de dueño   | Camilo      |
-| `/dueno/mascotas`                            | Mis mascotas        | Camilo      |
-| `/dueno/mascotas/nueva`                      | Registrar mascota   | Camilo      |
-| `/dueno/mascotas/:mascotaId`                 | Ficha de la mascota | Camilo      |
-| `/dueno/mascotas/:mascotaId/editar`          | Editar mascota      | Camilo      |
-| `/dueno/citas/nueva`                         | Agendar cita        | Camilo      |
-| `/veterinario/agenda`                        | Agenda del día      | Daza        |
-| `/veterinario/citas/:citaId/consulta`        | Registrar consulta  | Daza        |
-| `/veterinario/mascotas/:mascotaId/historial` | Historial clínico   | Daza        |
+| Ruta                                | Vista                                     | Responsable | Estado    |
+| ----------------------------------- | ----------------------------------------- | ----------- | --------- |
+| `/`                                 | Selector de perfil                        | Camilo      | Listo     |
+| `/registro`                         | Registro de dueño (fuera de los layouts)  | Camilo      | Pendiente |
+| `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Pendiente |
+| `/dueno/mascotas`                   | Mis mascotas                              | Camilo      | Pendiente |
+| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Pendiente |
+| `/dueno/agendar`                    | Agendar cita                              | Camilo      | Pendiente |
+| `/dueno/citas`                      | Mis citas                                 | Camilo      | Pendiente |
+| `/veterinario/agenda`               | Agenda del día                            | Daza        | Pendiente |
+| `/veterinario/consulta/:citaId`     | Registrar consulta                        | Daza        | Pendiente |
+| `/veterinario/pacientes`            | Pacientes (lista, destino del menú)       | Daza        | Pendiente |
+| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial          | Daza        | Pendiente |
 
 Si necesitas otra ruta, agrégala en tu sección del router y menciónalo en el PR.
+
+### Perfil activo y layouts
+
+- **Perfil:** no hay login. En `/` se elige Dueño o Veterinario y la persona; queda guardado en el navegador. En cualquier vista: `const { perfil } = usePerfil()` → `perfil.tipo`, `perfil.id`, `perfil.nombre` (`src/features/perfil/perfil-context.ts`).
+- **Protección:** `RequierePerfil` devuelve al selector si se entra a `/dueno/...` o `/veterinario/...` sin el perfil correspondiente.
+- **Layouts:** `LayoutDueno` y `LayoutVeterinario` (`src/layouts/`) comparten `BarraSuperior`: logo, enlaces (el activo con `bg-brand-soft text-primary`), acción principal y menú del perfil con "Cambiar perfil". En celular los enlaces pasan a un panel lateral (`sheet`). El contenido va centrado con ancho máximo de 1200px.
+- **Las vistas no ponen su propio margen ni barra**: el layout ya lo hace. Empiezan con `<EncabezadoPagina titulo="..." />`.
 
 ## Componentes de shadcn/ui
 
@@ -202,9 +211,9 @@ Ejemplos: `bg-brand-soft text-primary` (enlace activo), `bg-alerta-soft text-ale
 
 | Qué                                                                                                                  | Quién          | Cuándo           |
 | -------------------------------------------------------------------------------------------------------------------- | -------------- | ---------------- |
-| Paleta, tipografía y logo como tokens en `src/index.css`                                                             | Camilo y Daza  | Mar 10 (tarde)   |
-| Layout con barra lateral, selector de perfil y rutas con layouts                                                     | Camilo         | Mié 11           |
-| Componentes compartidos (badge de estado de cita, tabla, skeletons) en `src/components/`                             | Daza           | Mié 11           |
+| ~~Paleta, tipografía y logo como tokens en `src/index.css`~~ (hecho, PR #5)                                          | Camilo y Daza  | Mar 10           |
+| ~~Barra superior, selector de perfil y rutas con layouts~~ (hecho, `feature/front-layout`)                           | Camilo         | Mié 11           |
+| ~~Componentes compartidos (badge de estado de cita, tabla, skeletons)~~ (hecho, PR #4)                               | Daza           | Mié 11           |
 | Interceptor de errores de Axios en `src/api/http.ts` (muestra `detalle` del `ApiError` con un toast; también el 503) | Daza           | Jue 12           |
 | Cerrar los campos `// confirmar con back` de Mascotas en `types.ts` (Citas ya está confirmado)                       | Camilo con Pia | Antes del sáb 14 |
 | Pasar a la API real (`VITE_USE_MOCKS=false`)                                                                         | Camilo y Daza  | Sáb 14           |
@@ -213,5 +222,5 @@ Ejemplos: `bg-brand-soft text-primary` (enlace activo), `bg-alerta-soft text-ale
 
 - Rama por tarea desde `develop`: `feature/front-<tarea>` (por ejemplo `feature/front-agenda-veterinario`).
 - Commits pequeños: `feat(front): ...`, `fix(front): ...`, `chore: ...`.
-- PR hacia `develop`; Camilo y Daza se revisan mutuamente el mismo día.
+- PR hacia `develop`; Camilo (líder) revisa y aprueba los PR del equipo el mismo día.
 - Nunca subir `.env`, `node_modules/` ni `dist/` (ya están en el `.gitignore`).
