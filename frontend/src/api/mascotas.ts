@@ -4,7 +4,7 @@
 
 import duenosMock from "@/mocks/duenos.json"
 import mascotasMock from "@/mocks/mascotas.json"
-import { mascotasApi, simularRespuesta, USE_MOCKS } from "./http"
+import { errorSimulado, mascotasApi, simularRespuesta, USE_MOCKS } from "./http"
 import type {
   Dueno,
   EditarMascota,
@@ -24,7 +24,13 @@ const siguienteId = (items: { id: number }[]) =>
 
 function buscarMascota(id: number): Mascota {
   const mascota = mascotas.find((m) => m.id === id)
-  if (!mascota) throw new Error(`No existe la mascota ${id}`)
+  if (!mascota) {
+    throw errorSimulado(
+      404,
+      "RECURSO_NO_ENCONTRADO",
+      `No existe la mascota ${id}`,
+    )
+  }
   return mascota
 }
 
@@ -49,7 +55,13 @@ export async function getDuenos(): Promise<Dueno[]> {
 export async function getDueno(id: number): Promise<Dueno> {
   if (USE_MOCKS) {
     const dueno = duenos.find((d) => d.id === id)
-    if (!dueno) throw new Error(`No existe el dueño ${id}`)
+    if (!dueno) {
+      throw errorSimulado(
+        404,
+        "RECURSO_NO_ENCONTRADO",
+        `No existe el dueño ${id}`,
+      )
+    }
     return simularRespuesta(dueno)
   }
   const { data } = await mascotasApi.get<Dueno>(`/duenos/${id}`)

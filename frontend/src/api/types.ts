@@ -40,62 +40,92 @@ export type NuevaMascota = Omit<Mascota, "id" | "duenoId" | "fotoUrl">
 export type EditarMascota = NuevaMascota
 
 // ---------- ms-citas-historial (8082) ----------
+// Contrato confirmado por Jersson en docs/api.md (PR #2).
+
+export type TipoConsulta = "GENERAL" | "ESPECIALISTA"
 
 export interface Veterinario {
   id: number
   nombre: string
-  especialidad?: string // confirmar con back
+  especialidad: string
 }
 
 export interface Cita {
   id: number
   mascotaId: number
   veterinarioId: number
-  fechaHora: string // ISO, ej. "2026-11-20T09:30:00"
+  fechaHora: string // ISO local, ej. "2026-11-20T09:30:00"
   tipoServicio: TipoServicio
   estado: EstadoCita
+  duracionMinutos: number // hoy siempre 30
 }
 
-/** POST /api/citas */
+/** POST /api/citas (responde 201 con la Cita creada). */
 export interface NuevaCita {
   mascotaId: number
   veterinarioId: number
-  fechaHora: string
+  fechaHora: string // debe ser una hora devuelta por la disponibilidad
   tipoServicio: TipoServicio
 }
 
-/** GET /api/veterinarios/{id}/disponibilidad?fecha=...: horas libres del día. */
-export type Disponibilidad = string[] // confirmar con back (ej. ["2026-11-20T09:30:00", ...])
+/**
+ * GET /api/veterinarios/{id}/disponibilidad?fecha=2026-11-20
+ * Turnos libres de 30 min entre 8:00 y 18:00, sin horas pasadas.
+ */
+export interface Disponibilidad {
+  veterinarioId: number
+  fecha: string // "2026-11-20"
+  horarios: string[] // ej. ["2026-11-20T08:00:00", "2026-11-20T08:30:00", ...]
+}
 
-/** POST /api/citas/{id}/consulta */
+/** POST /api/citas/{id}/consulta (responde 201 con el RegistroHistorial). */
 export interface RegistrarConsulta {
-  tipoConsulta: string // confirmar con back (ej. "GENERAL", "ESPECIALISTA")
+  tipoConsulta: TipoConsulta
+  diagnostico: string // obligatorio
+  vacunasAplicadas?: string[]
+  tratamientos?: string[]
+  examenes?: string[]
+  observaciones?: string
+  proximoControl?: string // "2026-12-04", hoy o después
+}
+
+/** GET /api/mascotas/{id}/historial: una entrada por consulta, la más reciente primero. */
+export interface RegistroHistorial {
+  id: number
+  citaId: number
+  mascotaId: number
+  veterinarioId: number
+  fecha: string // fecha y hora en que se registró la consulta
+  tipoConsulta: TipoConsulta
   diagnostico: string
   vacunasAplicadas: string[]
   tratamientos: string[]
   examenes: string[]
-  observaciones?: string
-  proximoControl?: string // ISO, ej. "2026-12-04"
-}
-
-/** GET /api/mascotas/{id}/historial: una entrada por consulta registrada. */
-export interface RegistroHistorial extends RegistrarConsulta {
-  id: number // confirmar con back
-  citaId: number // confirmar con back
-  fecha: string // confirmar con back
-  veterinarioId: number // confirmar con back
+  observaciones: string | null
+  proximoControl: string | null
 }
 
 /** GET /api/mascotas/{id}/proximas-vacunas */
 export interface ProximaVacuna {
-  vacuna: string // confirmar con back
-  fechaLimite: string // confirmar con back
+  vacuna: string
+  fechaLimite: string // "2026-12-12"
 }
 
 // ---------- Errores (comunes a los dos servicios) ----------
 
-/** Cuerpo de error con códigos 400, 404 y 409 (horario ocupado). */
+/** Código en el campo `error` (confirmado en Citas; Mascotas por confirmar con Pia). */
+export type CodigoError =
+  | "DATOS_INVALIDOS" // 400
+  | "RECURSO_NO_ENCONTRADO" // 404
+  | "CONFLICTO" // 409: horario ocupado o estado incompatible
+  | "DEPENDENCIA_NO_DISPONIBLE" // 503: otro microservicio no responde
+  | "ERROR_INTERNO" // 500
+
+/**
+ * Cuerpo de todos los errores. `error` es un código para el programa;
+ * `detalle` es el mensaje en español que se le muestra al usuario.
+ */
 export interface ApiError {
-  error: string
+  error: CodigoError | (string & {})
   detalle?: string
 }

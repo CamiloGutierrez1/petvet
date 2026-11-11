@@ -76,6 +76,22 @@ Con `VITE_USE_MOCKS=true`, las funciones de `src/api` responden con los JSON de 
 
 En modo mocks, lo que se registra (mascotas, citas, consultas) queda en memoria hasta recargar la página, así que se pueden probar los flujos completos.
 
+Los mocks de Citas imitan las reglas del servicio real de Jersson (`docs/api.md` y `docs/decisiones.md` en la raíz): turnos de 30 minutos de 8:00 a 18:00, sin horas pasadas, **409** si el turno ya está ocupado o si se cancela una cita completada, y **404** si el recurso no existe. Los errores simulados tienen la misma forma que los reales, así que el manejo de errores se puede probar sin el back.
+
+### Errores de la API
+
+Todos los errores llegan como `{ "error": "CODIGO", "detalle": "Mensaje en español" }`:
+
+| HTTP | `error`                     | Cuándo                                              |
+| ---- | --------------------------- | --------------------------------------------------- |
+| 400  | `DATOS_INVALIDOS`           | Datos o fechas inválidos                            |
+| 404  | `RECURSO_NO_ENCONTRADO`     | No existe la cita, mascota, veterinario, etc.       |
+| 409  | `CONFLICTO`                 | Horario ocupado o estado de cita incompatible       |
+| 503  | `DEPENDENCIA_NO_DISPONIBLE` | Citas no pudo consultar a Mascotas (servicio caído) |
+| 500  | `ERROR_INTERNO`             | Error no previsto                                   |
+
+**El mensaje para el usuario está en `detalle`**, no en `error` (que es un código para el programa). En el código se lee así: `(err as AxiosError<ApiError>).response?.data?.detalle`.
+
 ### Funciones disponibles
 
 `src/api/mascotas.ts`: `registrarDueno`, `getDuenos`, `getDueno`, `registrarMascota`, `getMascotasDeDueno`, `getMascota` (ficha con nombre y correo del dueño), `editarMascota`, `subirFotoMascota`.
@@ -83,6 +99,8 @@ En modo mocks, lo que se registra (mascotas, citas, consultas) queda en memoria 
 `src/api/citas.ts`: `getVeterinarios`, `getDisponibilidad`, `agendarCita`, `getCitasDeMascota`, `getAgendaVeterinario`, `cancelarCita`, `registrarConsulta`, `getHistorial`, `getProximasVacunas`.
 
 **Para las vistas del veterinario (Daza):** `getAgendaVeterinario(veterinarioId, "2026-11-20")`, `registrarConsulta(citaId, datos)`, `getHistorial(mascotaId)`, `getProximasVacunas(mascotaId)`, `getMascota(id)`, `cancelarCita(id)` y `getVeterinarios()`. Los mocks tienen citas para el **20 de noviembre** (veterinarios 1 y 2).
+
+Ojo con la disponibilidad: `getDisponibilidad` devuelve un objeto `{ veterinarioId, fecha, horarios }`, no un arreglo. Las horas libres están en `horarios`.
 
 Ejemplo de uso en un componente:
 
@@ -104,7 +122,7 @@ const {
 
 ### Tipos
 
-Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Cita`, `RegistrarConsulta`, `RegistroHistorial`, etc.). Los campos marcados con `// confirmar con back` no están cerrados en el contrato: si Jersson o Pia los cambian, se ajustan **solo ahí** y TypeScript marca todo lo que haya que corregir.
+Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Cita`, `RegistrarConsulta`, `RegistroHistorial`, etc.). Los tipos de Citas ya están confirmados con el servicio de Jersson. Los campos de Mascotas marcados con `// confirmar con back` siguen pendientes con Pia: si cambian, se ajustan **solo ahí** y TypeScript marca todo lo que haya que corregir.
 
 ## Rutas
 
@@ -159,14 +177,14 @@ Para agregar otro: `npx shadcn@latest add <nombre>` desde `frontend/`. Avisa en 
 
 ## Pendientes y coordinación
 
-| Qué                                                                                                                         | Quién                    | Cuándo           |
-| --------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ---------------- |
-| Paleta, tipografía y logo como tokens en `src/index.css`                                                                    | Camilo y Daza            | Mar 10 (tarde)   |
-| Layout con barra lateral, selector de perfil y rutas con layouts                                                            | Camilo                   | Mié 11           |
-| Componentes compartidos (badge de estado de cita, tabla, skeletons) en `src/components/`                                    | Daza                     | Mié 11           |
-| Interceptor de errores de Axios en `src/api/http.ts` (muestra `ApiError` con un toast; 409 → "Ese horario ya está ocupado") | Daza                     | Jue 12           |
-| Cerrar los campos `// confirmar con back` de `types.ts`                                                                     | Camilo con Pia y Jersson | Antes del sáb 14 |
-| Pasar a la API real (`VITE_USE_MOCKS=false`)                                                                                | Camilo y Daza            | Sáb 14           |
+| Qué                                                                                                                  | Quién          | Cuándo           |
+| -------------------------------------------------------------------------------------------------------------------- | -------------- | ---------------- |
+| Paleta, tipografía y logo como tokens en `src/index.css`                                                             | Camilo y Daza  | Mar 10 (tarde)   |
+| Layout con barra lateral, selector de perfil y rutas con layouts                                                     | Camilo         | Mié 11           |
+| Componentes compartidos (badge de estado de cita, tabla, skeletons) en `src/components/`                             | Daza           | Mié 11           |
+| Interceptor de errores de Axios en `src/api/http.ts` (muestra `detalle` del `ApiError` con un toast; también el 503) | Daza           | Jue 12           |
+| Cerrar los campos `// confirmar con back` de Mascotas en `types.ts` (Citas ya está confirmado)                       | Camilo con Pia | Antes del sáb 14 |
+| Pasar a la API real (`VITE_USE_MOCKS=false`)                                                                         | Camilo y Daza  | Sáb 14           |
 
 ## Flujo de Git
 
