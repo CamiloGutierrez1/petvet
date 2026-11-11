@@ -151,7 +151,7 @@ Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una p
 | `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Pendiente |
 | `/dueno/mascotas`                   | Mis mascotas                              | Camilo      | Listo     |
 | `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Listo     |
-| `/dueno/agendar`                    | Agendar cita                              | Camilo      | Pendiente |
+| `/dueno/agendar`                    | Agendar cita                              | Camilo      | Listo     |
 | `/dueno/citas`                      | Mis citas                                 | Camilo      | Pendiente |
 | `/veterinario/agenda`               | Agenda del día                            | Daza        | Pendiente |
 | `/veterinario/consulta/:citaId`     | Registrar consulta                        | Daza        | Pendiente |
