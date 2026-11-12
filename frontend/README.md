@@ -119,7 +119,10 @@ Todos los errores llegan como `{ "error": "CODIGO", "detalle": "Mensaje en espa�
 
 **El mensaje para el usuario está en `detalle`**, no en `error` (que es un código para el programa). Para leerlo usa `mensajeDeError(error, "Texto por defecto")` de `src/api/errores.ts`: devuelve el `detalle`, un aviso de conexión si el servidor no responde, o el texto por defecto. `estadoHttp(error)` devuelve el código (409, 404, 503...).
 
-Ojo: en modo mocks los errores se lanzan directo desde las funciones de `src/api`, sin pasar por Axios, así que un interceptor de Axios no los ve. Para mostrar errores de forma global conviene usar el `onError` de TanStack Query (`QueryCache`/`MutationCache` en `src/lib/query-client.ts`) junto con `mensajeDeError`.
+**Manejo global de errores** (`src/lib/query-client.ts`, con el `onError` de TanStack Query, no un interceptor de Axios: en modo mocks los errores no pasan por Axios). Las vistas muestran sus errores en su lugar (`EstadoError` con "Reintentar", recuadros en formularios); el aviso global (toast) cubre lo demás:
+
+- **Acciones (`useMutation`)**: si fallan, sale un toast con el `detalle` del back, automáticamente. Si tu vista ya muestra el error (en un formulario o diálogo), marca la acción con `meta: { errorEnPantalla: true }` para que no salga dos veces.
+- **Consultas (`useQuery`)**: en la primera carga el error lo muestra la vista; si la consulta ya tenía datos y falla al actualizarse, sale un toast.
 
 ### Funciones disponibles
 
@@ -250,14 +253,14 @@ Ejemplos: `bg-brand-soft text-primary` (enlace activo), `bg-alerta-soft text-ale
 
 ## Pendientes y coordinación
 
-| Qué                                                                                                                  | Quién          | Cuándo           |
-| -------------------------------------------------------------------------------------------------------------------- | -------------- | ---------------- |
-| ~~Paleta, tipografía y logo como tokens en `src/index.css`~~ (hecho, PR #5)                                          | Camilo y Daza  | Mar 10           |
-| ~~Barra superior, selector de perfil y rutas con layouts~~ (hecho, `feature/front-layout`)                           | Camilo         | Mié 11           |
-| ~~Componentes compartidos (badge de estado de cita, tabla, skeletons)~~ (hecho, PR #4)                               | Daza           | Mié 11           |
-| Interceptor de errores de Axios en `src/api/http.ts` (muestra `detalle` del `ApiError` con un toast; también el 503) | Daza           | Jue 12           |
-| Cerrar los campos `// confirmar con back` de Mascotas en `types.ts` (Citas ya está confirmado)                       | Camilo con Pia | Antes del sáb 14 |
-| Pasar a la API real (`VITE_USE_MOCKS=false`)                                                                         | Camilo y Daza  | Sáb 14           |
+| Qué                                                                                            | Quién          | Cuándo           |
+| ---------------------------------------------------------------------------------------------- | -------------- | ---------------- |
+| ~~Paleta, tipografía y logo como tokens en `src/index.css`~~ (hecho, PR #5)                    | Camilo y Daza  | Mar 10           |
+| ~~Barra superior, selector de perfil y rutas con layouts~~ (hecho, `feature/front-layout`)     | Camilo         | Mié 11           |
+| ~~Componentes compartidos (badge de estado de cita, tabla, skeletons)~~ (hecho, PR #4)         | Daza           | Mié 11           |
+| ~~Manejo global de errores (toast con el `detalle`)~~ (hecho en `src/lib/query-client.ts`)     | Daza / Camilo  | Jue 12           |
+| Cerrar los campos `// confirmar con back` de Mascotas en `types.ts` (Citas ya está confirmado) | Camilo con Pia | Antes del sáb 14 |
+| Pasar a la API real (`VITE_USE_MOCKS=false`)                                                   | Camilo y Daza  | Sáb 14           |
 
 ## Flujo de Git
 

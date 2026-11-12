@@ -35,6 +35,7 @@ interface GuardarMascotaResultado {
 export function useGuardarMascota(duenoId: number) {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { errorEnPantalla: true }, // la vista muestra el error
     mutationFn: async ({
       mascotaId,
       datos,
