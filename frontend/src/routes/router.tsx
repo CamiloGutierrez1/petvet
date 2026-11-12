@@ -3,6 +3,7 @@ import { PaginaPendiente } from "@/components/pagina-pendiente"
 import { AgendarCitaPage } from "@/features/citas/agendar-cita-page"
 import { MisCitasPage } from "@/features/citas/mis-citas-page"
 import { FichaMascotaPage } from "@/features/duenos-mascotas/ficha-mascota-page"
+import { InicioDuenoPage } from "@/features/duenos-mascotas/inicio-dueno-page"
 import { MisMascotasPage } from "@/features/duenos-mascotas/mis-mascotas-page"
 import { RegistroDuenoPage } from "@/features/duenos-mascotas/registro-dueno-page"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
@@ -27,7 +28,7 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <PaginaPendiente titulo="Inicio" responsable="Camilo" />,
+            element: <InicioDuenoPage />,
           },
           {
             path: "mascotas",
