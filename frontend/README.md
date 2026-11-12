@@ -148,7 +148,7 @@ Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una p
 | ----------------------------------- | ----------------------------------------- | ----------- | --------- |
 | `/`                                 | Selector de perfil                        | Camilo      | Listo     |
 | `/registro`                         | Registro de dueño (fuera de los layouts)  | Camilo      | Listo     |
-| `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Pendiente |
+| `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Listo     |
 | `/dueno/mascotas`                   | Mis mascotas                              | Camilo      | Listo     |
 | `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Listo     |
 | `/dueno/agendar`                    | Agendar cita                              | Camilo      | Listo     |
