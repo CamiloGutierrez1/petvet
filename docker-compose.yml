@@ -111,6 +111,20 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  frontend:
+    profiles: [app]
+    build:
+      context: ./frontend
+      # Las URLs son las que usa el navegador (puertos publicados en localhost).
+      args:
+        VITE_API_MASCOTAS: http://localhost:8081/api
+        VITE_API_CITAS: http://localhost:8082/api
+        VITE_USE_MOCKS: ${PETVET_FRONT_USE_MOCKS:-false}
+    # 5173 es el origen permitido por CORS en los microservicios.
+    # Sin depends_on: el front se sirve aunque un servicio esté caído.
+    ports:
+      - "127.0.0.1:5173:80"
+
 volumes:
   mascotas-data:
   citas-data:
