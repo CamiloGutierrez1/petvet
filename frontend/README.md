@@ -185,7 +185,7 @@ Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una p
 | `/veterinario/agenda`               | Agenda del día                            | Daza        | Listo     |
 | `/veterinario/consulta/:citaId`     | Registrar consulta                        | Daza        | Listo     |
 | `/veterinario/pacientes`            | Pacientes (lista, destino del menú)       | Daza        | Pendiente |
-| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial          | Daza        | Pendiente |
+| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial          | Daza        | Listo     |
 
 Si necesitas otra ruta, agrégala en tu sección del router y menciónalo en el PR.
 
