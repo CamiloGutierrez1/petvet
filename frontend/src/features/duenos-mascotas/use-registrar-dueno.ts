@@ -5,6 +5,7 @@ import { registrarDueno } from "@/api/mascotas"
 export function useRegistrarDueno() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { errorEnPantalla: true }, // la vista muestra el error
     mutationFn: registrarDueno,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["duenos"] }),
   })

@@ -18,6 +18,7 @@ export function useDisponibilidad(veterinarioId?: number, fecha?: string) {
 export function useAgendarCita() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { errorEnPantalla: true }, // la vista muestra el error
     mutationFn: agendarCita,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["citas"] })

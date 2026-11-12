@@ -26,6 +26,7 @@ export function useCitasDeMascotas(mascotas: Mascota[] | undefined) {
 export function useCancelarCita() {
   const queryClient = useQueryClient()
   return useMutation({
+    meta: { errorEnPantalla: true }, // la vista muestra el error
     mutationFn: cancelarCita,
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["citas"] })
