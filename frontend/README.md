@@ -182,7 +182,7 @@ Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una p
 | `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Listo     |
 | `/dueno/agendar`                    | Agendar cita                              | Camilo      | Listo     |
 | `/dueno/citas`                      | Mis citas                                 | Camilo      | Listo     |
-| `/veterinario/agenda`               | Agenda del día                            | Daza        | Pendiente |
+| `/veterinario/agenda`               | Agenda del día                            | Daza        | Listo     |
 | `/veterinario/consulta/:citaId`     | Registrar consulta                        | Daza        | Pendiente |
 | `/veterinario/pacientes`            | Pacientes (lista, destino del menú)       | Daza        | Pendiente |
 | `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial          | Daza        | Pendiente |

@@ -8,6 +8,7 @@ import { MisMascotasPage } from "@/features/duenos-mascotas/mis-mascotas-page"
 import { RegistroDuenoPage } from "@/features/duenos-mascotas/registro-dueno-page"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
 import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
+import { AgendaPage } from "@/features/veterinario/agenda-page"
 import { LayoutDueno } from "@/layouts/LayoutDueno"
 import { LayoutVeterinario } from "@/layouts/LayoutVeterinario"
 
@@ -62,9 +63,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="agenda" replace /> },
           {
             path: "agenda",
-            element: (
-              <PaginaPendiente titulo="Agenda del día" responsable="Daza" />
-            ),
+            element: <AgendaPage />,
           },
           {
             path: "consulta/:citaId",
