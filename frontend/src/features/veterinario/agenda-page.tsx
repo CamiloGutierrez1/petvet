@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { addDays, format, isToday, parseISO } from "date-fns"
 import {
   CalendarX2,
@@ -44,7 +44,14 @@ const DIA = new Intl.DateTimeFormat("es-CO", {
 export function AgendaPage() {
   const { perfil } = usePerfil()
   const veterinarioId = perfil!.id
-  const [dia, setDia] = useState(() => new Date())
+  // ?fecha=2026-11-20 abre la agenda en ese día (ej. al volver de una consulta).
+  const [params] = useSearchParams()
+  const [dia, setDia] = useState(() => {
+    const fecha = params.get("fecha")
+    return fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)
+      ? parseISO(fecha)
+      : new Date()
+  })
   const fecha = format(dia, "yyyy-MM-dd")
 
   const agenda = useAgenda(veterinarioId, fecha)
@@ -299,7 +306,9 @@ function Acciones({
     <div className="flex items-center justify-end gap-2">
       {cita.estado === "AGENDADA" && (
         <Button asChild size="sm">
-          <Link to={`/veterinario/consulta/${cita.id}`}>
+          <Link
+            to={`/veterinario/consulta/${cita.id}?mascota=${cita.mascotaId}`}
+          >
             <ClipboardPlus />
             Registrar consulta
           </Link>
