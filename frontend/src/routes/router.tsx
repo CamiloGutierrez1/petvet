@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { PaginaPendiente } from "@/components/pagina-pendiente"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
-import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
+import { EntradaPage } from "@/features/perfil/entrada-page"
 import { LayoutDueno } from "@/layouts/LayoutDueno"
 import { LayoutVeterinario } from "@/layouts/LayoutVeterinario"
 import {
@@ -17,10 +17,10 @@ import {
 } from "./paginas"
 
 // Rutas de la aplicación. Las pantallas se cargan bajo demanda (./paginas);
-// el selector de perfil se carga de inmediato porque es la primera.
+// la entrada se carga de inmediato porque es la primera.
 // Cada grupo: RequierePerfil (exige ese perfil) → Layout (barra superior) → vista.
 export const router = createBrowserRouter([
-  { path: "/", element: <SelectorPerfilPage /> },
+  { path: "/", element: <EntradaPage /> },
   { path: "/registro", element: <RegistroDuenoPage /> },
 
   // ---------- Dueño ----------

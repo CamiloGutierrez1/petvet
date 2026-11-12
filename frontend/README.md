@@ -173,25 +173,25 @@ Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Ci
 
 Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una página provisional; para construir una, se reemplaza `<PaginaPendiente ... />` por el componente real.
 
-| Ruta                                | Vista                                     | Responsable | Estado    |
-| ----------------------------------- | ----------------------------------------- | ----------- | --------- |
-| `/`                                 | Selector de perfil                        | Camilo      | Listo     |
-| `/registro`                         | Registro de dueño (fuera de los layouts)  | Camilo      | Listo     |
-| `/dueno`                            | Inicio: resumen con secciones "Ver todas" | Camilo      | Listo     |
-| `/dueno/mascotas`                   | Mis mascotas                              | Camilo      | Listo     |
-| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                       | Camilo      | Listo     |
-| `/dueno/agendar`                    | Agendar cita                              | Camilo      | Listo     |
-| `/dueno/citas`                      | Mis citas                                 | Camilo      | Listo     |
-| `/veterinario/agenda`               | Agenda del día                            | Daza        | Listo     |
-| `/veterinario/consulta/:citaId`     | Registrar consulta                        | Daza        | Listo     |
-| `/veterinario/pacientes`            | Pacientes (lista, destino del menú)       | Daza        | Pendiente |
-| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial          | Daza        | Listo     |
+| Ruta                                | Vista                                        | Responsable | Estado    |
+| ----------------------------------- | -------------------------------------------- | ----------- | --------- |
+| `/`                                 | Entrada: rol + correo (dueño) o lista (vet.) | Camilo      | Listo     |
+| `/registro`                         | Registro de dueño (fuera de los layouts)     | Camilo      | Listo     |
+| `/dueno`                            | Inicio: resumen con secciones "Ver todas"    | Camilo      | Listo     |
+| `/dueno/mascotas`                   | Mis mascotas                                 | Camilo      | Listo     |
+| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                          | Camilo      | Listo     |
+| `/dueno/agendar`                    | Agendar cita                                 | Camilo      | Listo     |
+| `/dueno/citas`                      | Mis citas                                    | Camilo      | Listo     |
+| `/veterinario/agenda`               | Agenda del día                               | Daza        | Listo     |
+| `/veterinario/consulta/:citaId`     | Registrar consulta                           | Daza        | Listo     |
+| `/veterinario/pacientes`            | Pacientes (lista, destino del menú)          | Daza        | Pendiente |
+| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial             | Daza        | Listo     |
 
 Si necesitas otra ruta, agrégala en tu sección del router y menciónalo en el PR.
 
 ### Perfil activo y layouts
 
-- **Perfil:** no hay login. En `/` se elige Dueño o Veterinario y la persona; queda guardado en el navegador. En cualquier vista: `const { perfil } = usePerfil()` → `perfil.tipo`, `perfil.id`, `perfil.nombre` (`src/features/perfil/perfil-context.ts`).
+- **Perfil:** no hay login real (decisión del proyecto). En `/` (`EntradaPage`, diseño V4 en dos columnas con `LayoutEntrada`) se elige Dueño o Veterinario: el dueño entra con su **correo** (se busca en `GET /api/duenos`; si no existe, se ofrece el registro) y el veterinario se elige de la lista. Queda guardado en el navegador; si ya hay perfil, aparece "Continuar como…". En cualquier vista: `const { perfil } = usePerfil()` → `perfil.tipo`, `perfil.id`, `perfil.nombre` (`src/features/perfil/perfil-context.ts`).
 - **Protección:** `RequierePerfil` devuelve al selector si se entra a `/dueno/...` o `/veterinario/...` sin el perfil correspondiente.
 - **Layouts:** `LayoutDueno` y `LayoutVeterinario` (`src/layouts/`) comparten `BarraSuperior`: logo, enlaces (el activo con `bg-brand-soft text-primary`), acción principal y menú del perfil con "Cambiar perfil". En celular los enlaces pasan a un panel lateral (`sheet`). El contenido va centrado con ancho máximo de 1200px.
 - **Las vistas no ponen su propio margen ni barra**: el layout ya lo hace. Empiezan con `<EncabezadoPagina titulo="..." />`.
