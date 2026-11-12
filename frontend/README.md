@@ -84,7 +84,22 @@ VITE_API_CITAS=http://localhost:8082/api
 VITE_USE_MOCKS=true
 ```
 
-Con `VITE_USE_MOCKS=true`, las funciones de `src/api` responden con los JSON de `src/mocks` (con 400 ms de espera, para ver los skeletons). Con `false`, llaman a la API real. Las páginas no cambian: pasar a la API real el sábado 14 es cambiar esa variable y reiniciar `npm run dev`.
+Con `VITE_USE_MOCKS=true`, las funciones de `src/api` responden con los JSON de `src/mocks` (con 400 ms de espera, para ver los skeletons). Con `false`, llaman a la API real. Las páginas no cambian: pasar a la API real es cambiar esa variable y reiniciar `npm run dev`.
+
+**Un interruptor por servicio.** Para conectar un microservicio mientras el otro sigue simulado, define en `.env` los específicos (mandan sobre `VITE_USE_MOCKS`):
+
+```
+VITE_USE_MOCKS_MASCOTAS=true    # Mascotas simulado (mientras Pia termina)
+VITE_USE_MOCKS_CITAS=false      # Citas contra el servicio real de Jersson
+```
+
+Para probar con Citas real hay que levantar la demo de Jersson desde la raíz del repo (sin el front, para no ocupar el 5173 de `npm run dev`):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app --profile demo up -d --build ms-citas-historial mascotas-demo
+```
+
+La demo trae un servicio de mascotas de prueba con los ids 1, 2 y 3, los mismos de nuestros mocks, así que se puede agendar para Tobby (1) y Misha (2). Una mascota registrada en el front (id 4 en adelante) no existe en esa demo y Citas responde 404 al agendarle.
 
 En modo mocks, lo que se registra (mascotas, citas, consultas) queda en memoria hasta recargar la página, así que se pueden probar los flujos completos.
 
@@ -138,14 +153,14 @@ const {
 
 Para que las dos mitades del front muestren fechas y textos igual:
 
-| Función                          | Ejemplo                                             |
-| -------------------------------- | --------------------------------------------------- |
-| `formatearFecha("2026-12-12")`   | `12 dic 2026`                                       |
-| `formatearFechaCorta(...)`       | `12 dic` (ej. "Próxima vacuna: Rabia, 12 dic")      |
-| `formatearHora(fechaHora)`       | `9:30 a. m.`                                        |
-| `formatearFechaHora(fechaHora)`  | `vie 20 nov 2026, 9:30 a. m.`                       |
-| `textoPlazo("2026-12-12")`       | `en 31 días`, `mañana`, `hoy`, `venció hace 3 días` |
-| `etiquetaServicio("VACUNACION")` | `Vacunación` (y `TIPOS_SERVICIO` para un `select`)  |
+| Función                          | Ejemplo                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `formatearFecha("2026-12-12")`   | `12 dic 2026`                                                                                           |
+| `formatearFechaCorta(...)`       | `12 dic`; con año si no es el actual: `12 nov 2023`                                                     |
+| `formatearHora(fechaHora)`       | `9:30 a. m.`                                                                                            |
+| `formatearFechaHora(fechaHora)`  | `vie 20 nov 2026, 9:30 a. m.`                                                                           |
+| `textoPlazo("2026-12-12")`       | `en 31 días`, `mañana`, `hoy`, `venció hace 3 días`, `venció hace 2 meses`, `venció hace más de un año` |
+| `etiquetaServicio("VACUNACION")` | `Vacunación` (y `TIPOS_SERVICIO` para un `select`)                                                      |
 
 ### Tipos
 
