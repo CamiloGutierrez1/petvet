@@ -25,6 +25,17 @@ npm run dev              # abre http://localhost:5173
 
 Antes de abrir un PR: `npm run lint` y `npm run build` sin errores.
 
+### Con Docker
+
+El `Dockerfile` compila con Node 22 y sirve el resultado con nginx (`nginx.conf`). nginx devuelve `index.html` en cualquier ruta, así que recargar en `/dueno/citas` funciona.
+
+```bash
+docker build -t petvet-frontend .
+docker run --rm -p 5173:80 petvet-frontend     # http://localhost:5173
+```
+
+Las variables `VITE_*` se incrustan **al compilar**, no al arrancar. Por defecto la imagen usa la API real (`VITE_USE_MOCKS=false`) en `localhost:8081` y `localhost:8082`: son las URLs que usa el navegador, por eso no van los nombres internos de los contenedores. Para otra configuración: `docker build --build-arg VITE_USE_MOCKS=true -t petvet-frontend .`
+
 ## Stack
 
 | Qué         | Tecnología                                                     |
