@@ -1,27 +1,29 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 import { PaginaPendiente } from "@/components/pagina-pendiente"
-import { AgendarCitaPage } from "@/features/citas/agendar-cita-page"
-import { MisCitasPage } from "@/features/citas/mis-citas-page"
-import { FichaMascotaPage } from "@/features/duenos-mascotas/ficha-mascota-page"
-import { InicioDuenoPage } from "@/features/duenos-mascotas/inicio-dueno-page"
-import { MisMascotasPage } from "@/features/duenos-mascotas/mis-mascotas-page"
-import { RegistroDuenoPage } from "@/features/duenos-mascotas/registro-dueno-page"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
 import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
-import { AgendaPage } from "@/features/veterinario/agenda-page"
-import { FichaPacientePage } from "@/features/veterinario/ficha-paciente-page"
-import { RegistrarConsultaPage } from "@/features/veterinario/registrar-consulta-page"
 import { LayoutDueno } from "@/layouts/LayoutDueno"
 import { LayoutVeterinario } from "@/layouts/LayoutVeterinario"
+import {
+  AgendaPage,
+  AgendarCitaPage,
+  FichaMascotaPage,
+  FichaPacientePage,
+  InicioDuenoPage,
+  MisCitasPage,
+  MisMascotasPage,
+  RegistrarConsultaPage,
+  RegistroDuenoPage,
+} from "./paginas"
 
-// Rutas de la aplicación. Las vistas que aún no existen muestran una página
-// provisional; se reemplazan a medida que se construyen.
+// Rutas de la aplicación. Las pantallas se cargan bajo demanda (./paginas);
+// el selector de perfil se carga de inmediato porque es la primera.
 // Cada grupo: RequierePerfil (exige ese perfil) → Layout (barra superior) → vista.
 export const router = createBrowserRouter([
   { path: "/", element: <SelectorPerfilPage /> },
   { path: "/registro", element: <RegistroDuenoPage /> },
 
-  // ---------- Dueño (Camilo) ----------
+  // ---------- Dueño ----------
   {
     path: "/dueno",
     element: <RequierePerfil tipo="dueno" />,
@@ -29,32 +31,17 @@ export const router = createBrowserRouter([
       {
         element: <LayoutDueno />,
         children: [
-          {
-            index: true,
-            element: <InicioDuenoPage />,
-          },
-          {
-            path: "mascotas",
-            element: <MisMascotasPage />,
-          },
-          {
-            path: "mascotas/:mascotaId",
-            element: <FichaMascotaPage />,
-          },
-          {
-            path: "agendar",
-            element: <AgendarCitaPage />,
-          },
-          {
-            path: "citas",
-            element: <MisCitasPage />,
-          },
+          { index: true, element: <InicioDuenoPage /> },
+          { path: "mascotas", element: <MisMascotasPage /> },
+          { path: "mascotas/:mascotaId", element: <FichaMascotaPage /> },
+          { path: "agendar", element: <AgendarCitaPage /> },
+          { path: "citas", element: <MisCitasPage /> },
         ],
       },
     ],
   },
 
-  // ---------- Veterinario (Daza) ----------
+  // ---------- Veterinario ----------
   {
     path: "/veterinario",
     element: <RequierePerfil tipo="veterinario" />,
@@ -63,22 +50,13 @@ export const router = createBrowserRouter([
         element: <LayoutVeterinario />,
         children: [
           { index: true, element: <Navigate to="agenda" replace /> },
-          {
-            path: "agenda",
-            element: <AgendaPage />,
-          },
-          {
-            path: "consulta/:citaId",
-            element: <RegistrarConsultaPage />,
-          },
+          { path: "agenda", element: <AgendaPage /> },
+          { path: "consulta/:citaId", element: <RegistrarConsultaPage /> },
           {
             path: "pacientes",
             element: <PaginaPendiente titulo="Pacientes" responsable="Daza" />,
           },
-          {
-            path: "pacientes/:mascotaId",
-            element: <FichaPacientePage />,
-          },
+          { path: "pacientes/:mascotaId", element: <FichaPacientePage /> },
         ],
       },
     ],

@@ -1,4 +1,4 @@
-import type { Key, ReactNode } from "react"
+import type { Key, KeyboardEvent, MouseEvent, ReactNode } from "react"
 import {
   Table,
   TableBody,
@@ -10,6 +10,20 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { EstadoVacio } from "@/components/estado-vacio"
 import { cn } from "@/lib/utils"
+
+/**
+ * true si el evento viene de un botón, enlace o campo dentro de la fila: en
+ * ese caso actúa ese control y no la fila completa.
+ */
+function vieneDeControl(evento: {
+  target: EventTarget
+  currentTarget: Element
+}) {
+  const control = (evento.target as Element).closest(
+    "a, button, input, select, textarea, [role='menuitem']",
+  )
+  return control !== null && control !== evento.currentTarget
+}
 
 export interface ColumnaTabla<T> {
   id: string
@@ -71,10 +85,25 @@ export function TablaDatos<T>({
             : filas!.map((fila) => (
                 <TableRow
                   key={obtenerClave(fila)}
-                  onClick={
-                    alHacerClicFila ? () => alHacerClicFila(fila) : undefined
-                  }
-                  className={cn(alHacerClicFila && "cursor-pointer")}
+                  {...(alHacerClicFila && {
+                    // Fila clicable también con teclado: Tab para enfocarla,
+                    // Enter o espacio para abrirla.
+                    tabIndex: 0,
+                    onClick: (e: MouseEvent<HTMLTableRowElement>) => {
+                      if (!vieneDeControl(e)) alHacerClicFila(fila)
+                    },
+                    onKeyDown: (e: KeyboardEvent<HTMLTableRowElement>) => {
+                      if (vieneDeControl(e)) return
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        alHacerClicFila(fila)
+                      }
+                    },
+                  })}
+                  className={cn(
+                    alHacerClicFila &&
+                      "cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+                  )}
                 >
                   {columnas.map((col) => (
                     <TableCell
