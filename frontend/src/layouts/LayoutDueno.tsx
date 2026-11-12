@@ -1,6 +1,8 @@
+import { Suspense } from "react"
 import { Link, Outlet } from "react-router-dom"
 import { CalendarPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CargandoPagina } from "@/components/cargando-pagina"
 import { BarraSuperior, type EnlaceNav } from "./barra-superior"
 
 const ENLACES: EnlaceNav[] = [
@@ -26,7 +28,9 @@ export function LayoutDueno() {
         }
       />
       <main className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
-        <Outlet />
+        <Suspense fallback={<CargandoPagina />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
