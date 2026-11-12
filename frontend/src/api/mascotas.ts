@@ -4,7 +4,12 @@
 
 import duenosMock from "@/mocks/duenos.json"
 import mascotasMock from "@/mocks/mascotas.json"
-import { errorSimulado, mascotasApi, simularRespuesta, USE_MOCKS } from "./http"
+import {
+  errorSimulado,
+  mascotasApi,
+  simularRespuesta,
+  USE_MOCKS_MASCOTAS,
+} from "./http"
 import type {
   Dueno,
   EditarMascota,
@@ -37,7 +42,7 @@ function buscarMascota(id: number): Mascota {
 // ---------- Dueños ----------
 
 export async function registrarDueno(datos: NuevoDueno): Promise<Dueno> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     // confirmar con back: que Mascotas responda 409 si el correo ya existe
     const correo = datos.email.trim().toLowerCase()
     if (duenos.some((d) => d.email.toLowerCase() === correo)) {
@@ -56,13 +61,13 @@ export async function registrarDueno(datos: NuevoDueno): Promise<Dueno> {
 }
 
 export async function getDuenos(): Promise<Dueno[]> {
-  if (USE_MOCKS) return simularRespuesta(duenos)
+  if (USE_MOCKS_MASCOTAS) return simularRespuesta(duenos)
   const { data } = await mascotasApi.get<Dueno[]>("/duenos")
   return data
 }
 
 export async function getDueno(id: number): Promise<Dueno> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     const dueno = duenos.find((d) => d.id === id)
     if (!dueno) {
       throw errorSimulado(
@@ -83,7 +88,7 @@ export async function registrarMascota(
   duenoId: number,
   datos: NuevaMascota,
 ): Promise<Mascota> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     const mascota = { id: siguienteId(mascotas), duenoId, ...datos }
     mascotas.push(mascota)
     return simularRespuesta(mascota)
@@ -96,7 +101,7 @@ export async function registrarMascota(
 }
 
 export async function getMascotasDeDueno(duenoId: number): Promise<Mascota[]> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     return simularRespuesta(mascotas.filter((m) => m.duenoId === duenoId))
   }
   const { data } = await mascotasApi.get<Mascota[]>(
@@ -106,7 +111,7 @@ export async function getMascotasDeDueno(duenoId: number): Promise<Mascota[]> {
 }
 
 export async function getMascota(id: number): Promise<MascotaDetalle> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     const mascota = buscarMascota(id)
     const dueno = duenos.find((d) => d.id === mascota.duenoId)
     return simularRespuesta({
@@ -123,7 +128,7 @@ export async function editarMascota(
   id: number,
   datos: EditarMascota,
 ): Promise<Mascota> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     const mascota = buscarMascota(id)
     Object.assign(mascota, datos)
     return simularRespuesta(mascota)
@@ -136,7 +141,7 @@ export async function subirFotoMascota(
   id: number,
   foto: File,
 ): Promise<Mascota> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_MASCOTAS) {
     const mascota = buscarMascota(id)
     mascota.fotoUrl = URL.createObjectURL(foto)
     return simularRespuesta(mascota)

@@ -14,7 +14,7 @@ import {
   citasApi,
   errorSimulado,
   simularRespuesta,
-  USE_MOCKS,
+  USE_MOCKS_CITAS,
 } from "./http"
 import type {
   Cita,
@@ -91,7 +91,7 @@ function turnosLibres(veterinarioId: number, fecha: string): string[] {
 // ---------- Veterinarios ----------
 
 export async function getVeterinarios(): Promise<Veterinario[]> {
-  if (USE_MOCKS) return simularRespuesta(veterinarios)
+  if (USE_MOCKS_CITAS) return simularRespuesta(veterinarios)
   const { data } = await citasApi.get<Veterinario[]>("/veterinarios")
   return data
 }
@@ -101,7 +101,7 @@ export async function getDisponibilidad(
   veterinarioId: number,
   fecha: string,
 ): Promise<Disponibilidad> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     buscarVeterinario(veterinarioId)
     return simularRespuesta({
       veterinarioId,
@@ -119,7 +119,7 @@ export async function getDisponibilidad(
 // ---------- Citas ----------
 
 export async function agendarCita(datos: NuevaCita): Promise<Cita> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     buscarVeterinario(datos.veterinarioId)
     const fecha = datos.fechaHora.slice(0, 10)
     if (!turnosLibres(datos.veterinarioId, fecha).includes(datos.fechaHora)) {
@@ -157,7 +157,7 @@ export async function agendarCita(datos: NuevaCita): Promise<Cita> {
 
 /** Citas de una mascota, la más reciente primero. */
 export async function getCitasDeMascota(mascotaId: number): Promise<Cita[]> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     return simularRespuesta(
       citas
         .filter((c) => c.mascotaId === mascotaId)
@@ -175,7 +175,7 @@ export async function getAgendaVeterinario(
   veterinarioId: number,
   fecha: string,
 ): Promise<Cita[]> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     buscarVeterinario(veterinarioId)
     return simularRespuesta(
       citas
@@ -194,7 +194,7 @@ export async function getAgendaVeterinario(
 
 /** Cancela una cita. Una cita completada no se puede cancelar (409). */
 export async function cancelarCita(id: number): Promise<Cita> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     const cita = buscarCita(id)
     if (cita.estado === "COMPLETADA") {
       throw errorSimulado(
@@ -215,7 +215,7 @@ export async function registrarConsulta(
   citaId: number,
   datos: RegistrarConsulta,
 ): Promise<RegistroHistorial> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     const cita = buscarCita(citaId)
     if (cita.estado !== "AGENDADA") {
       throw errorSimulado(
@@ -255,7 +255,7 @@ export async function registrarConsulta(
 export async function getHistorial(
   mascotaId: number,
 ): Promise<RegistroHistorial[]> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     return simularRespuesta(
       historial
         .filter((h) => h.mascotaId === mascotaId)
@@ -271,7 +271,7 @@ export async function getHistorial(
 export async function getProximasVacunas(
   mascotaId: number,
 ): Promise<ProximaVacuna[]> {
-  if (USE_MOCKS) {
+  if (USE_MOCKS_CITAS) {
     return simularRespuesta(
       proximasVacunas
         .filter((v) => v.mascotaId === mascotaId)

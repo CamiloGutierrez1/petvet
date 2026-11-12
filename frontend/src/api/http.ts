@@ -11,8 +11,20 @@ export const citasApi = axios.create({
   baseURL: import.meta.env.VITE_API_CITAS,
 })
 
-/** true: las funciones de src/api devuelven los JSON de src/mocks. */
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true"
+/**
+ * true: las funciones de ese servicio devuelven los JSON de src/mocks.
+ * Cada microservicio tiene su propio interruptor, para conectar uno a la API
+ * real mientras el otro sigue simulado. Si no se define el específico, se
+ * usa VITE_USE_MOCKS para los dos.
+ */
+function usarMocks(especifico: string | undefined): boolean {
+  return (especifico ?? import.meta.env.VITE_USE_MOCKS) === "true"
+}
+
+export const USE_MOCKS_MASCOTAS = usarMocks(
+  import.meta.env.VITE_USE_MOCKS_MASCOTAS,
+)
+export const USE_MOCKS_CITAS = usarMocks(import.meta.env.VITE_USE_MOCKS_CITAS)
 
 /**
  * Simula la latencia de red en modo mocks, para que los estados de carga
