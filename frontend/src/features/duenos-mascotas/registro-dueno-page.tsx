@@ -1,11 +1,11 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Link, useNavigate } from "react-router-dom"
-import { CircleAlert, LoaderCircle } from "lucide-react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { ArrowLeft, CircleAlert, LoaderCircle } from "lucide-react"
 import { toast } from "sonner"
 import { mensajeDeError } from "@/api/errores"
-import { Logo } from "@/components/logo"
+import { LayoutEntrada } from "@/features/perfil/layout-entrada"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -42,6 +42,7 @@ type FormularioDueno = z.infer<typeof esquema>
 /** Ruta "/registro": crea un dueño y entra a la app con ese perfil. */
 export function RegistroDuenoPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const { elegirPerfil } = usePerfil()
   const registrar = useRegistrarDueno()
 
@@ -51,7 +52,12 @@ export function RegistroDuenoPage() {
     formState: { errors },
   } = useForm<FormularioDueno>({
     resolver: zodResolver(esquema),
-    defaultValues: { nombre: "", email: "", telefono: "" },
+    // ?email= viene de la entrada cuando el correo no estaba registrado.
+    defaultValues: {
+      nombre: "",
+      email: params.get("email") ?? "",
+      telefono: "",
+    },
   })
 
   function enviar(valores: FormularioDueno) {
@@ -72,11 +78,17 @@ export function RegistroDuenoPage() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center px-4 py-12 sm:py-20">
-      <div className="flex w-full max-w-md flex-col gap-8">
-        <Logo className="self-center" />
+    <LayoutEntrada>
+      <div className="flex flex-col gap-6">
+        <Link
+          to="/"
+          className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Volver
+        </Link>
 
-        <div className="flex flex-col gap-1 text-center">
+        <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">
             Registro de dueño
           </h1>
@@ -89,7 +101,7 @@ export function RegistroDuenoPage() {
         <form
           noValidate
           onSubmit={handleSubmit(enviar)}
-          className="flex flex-col gap-6 rounded-xl border bg-card p-6"
+          className="flex flex-col gap-6"
         >
           <FieldGroup>
             <Field data-invalid={!!errors.nombre}>
@@ -159,16 +171,16 @@ export function RegistroDuenoPage() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           ¿Ya estás registrado?{" "}
           <Link
-            to="/"
+            to="/?paso=dueno"
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            Elige tu perfil
+            Entra con tu correo
           </Link>
         </p>
       </div>
-    </main>
+    </LayoutEntrada>
   )
 }
