@@ -9,6 +9,7 @@ import { RegistroDuenoPage } from "@/features/duenos-mascotas/registro-dueno-pag
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
 import { SelectorPerfilPage } from "@/features/perfil/selector-perfil-page"
 import { AgendaPage } from "@/features/veterinario/agenda-page"
+import { FichaPacientePage } from "@/features/veterinario/ficha-paciente-page"
 import { RegistrarConsultaPage } from "@/features/veterinario/registrar-consulta-page"
 import { LayoutDueno } from "@/layouts/LayoutDueno"
 import { LayoutVeterinario } from "@/layouts/LayoutVeterinario"
@@ -76,9 +77,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "pacientes/:mascotaId",
-            element: (
-              <PaginaPendiente titulo="Ficha del paciente" responsable="Daza" />
-            ),
+            element: <FichaPacientePage />,
           },
         ],
       },
