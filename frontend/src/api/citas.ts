@@ -170,6 +170,35 @@ export async function getCitasDeMascota(mascotaId: number): Promise<Cita[]> {
   return data
 }
 
+/** GET /api/citas/{id}: una cita con su estado actual (404 si no existe). */
+export async function getCita(id: number): Promise<Cita> {
+  if (USE_MOCKS_CITAS) return simularRespuesta(buscarCita(id))
+  const { data } = await citasApi.get<Cita>(`/citas/${id}`)
+  return data
+}
+
+/**
+ * GET /api/citas?veterinarioId={id} (sin fecha): todas las citas de un
+ * veterinario, la más reciente primero, incluidas las canceladas. Con ellas
+ * se arma su lista de pacientes.
+ */
+export async function getCitasDeVeterinario(
+  veterinarioId: number,
+): Promise<Cita[]> {
+  if (USE_MOCKS_CITAS) {
+    buscarVeterinario(veterinarioId)
+    return simularRespuesta(
+      citas
+        .filter((c) => c.veterinarioId === veterinarioId)
+        .sort((a, b) => b.fechaHora.localeCompare(a.fechaHora)),
+    )
+  }
+  const { data } = await citasApi.get<Cita[]>("/citas", {
+    params: { veterinarioId },
+  })
+  return data
+}
+
 /** Agenda del día de un veterinario, en orden de hora. fecha: "2026-11-20". */
 export async function getAgendaVeterinario(
   veterinarioId: number,

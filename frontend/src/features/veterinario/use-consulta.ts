@@ -1,18 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { registrarConsulta } from "@/api/citas"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { getCita, registrarConsulta } from "@/api/citas"
 import type { RegistrarConsulta } from "@/api/types"
-import { useCitasDeMascota } from "@/features/duenos-mascotas/use-ficha-mascota"
 
-/**
- * Una cita por su id. El contrato no tiene GET /api/citas/{id} (pedido a
- * Jersson), así que se busca entre las citas de su mascota.
- */
-export function useCita(mascotaId: number, citaId: number) {
-  const consulta = useCitasDeMascota(mascotaId)
-  return {
-    ...consulta,
-    cita: consulta.data?.find((c) => c.id === citaId),
-  }
+/** Una cita por su id (GET /api/citas/{id}). */
+export function useCita(citaId: number) {
+  return useQuery({
+    // Empieza por "citas" para que registrar o cancelar la refresque.
+    queryKey: ["citas", "detalle", citaId],
+    queryFn: () => getCita(citaId),
+  })
 }
 
 /** Registra la consulta (la cita queda COMPLETADA) y refresca lo afectado. */

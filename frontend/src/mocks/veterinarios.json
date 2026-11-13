@@ -4,5 +4,12 @@
     "nombre": "Dra. Paula Castaño",
     "especialidad": "Medicina general"
   },
-  { "id": 2, "nombre": "Dr. Andrés Villamil", "especialidad": "Dermatología" }
+  { "id": 2, "nombre": "Dr. Andrés Villamil", "especialidad": "Dermatología" },
+  { "id": 3, "nombre": "Dra. Valentina Ríos", "especialidad": "Cirugía" },
+  { "id": 4, "nombre": "Dr. Julián Herrera", "especialidad": "Odontología" },
+  {
+    "id": 5,
+    "nombre": "Dra. Sofía Cárdenas",
+    "especialidad": "Medicina felina"
+  }
 ]

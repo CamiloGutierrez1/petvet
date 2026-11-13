@@ -52,6 +52,11 @@ export const RegistrarConsultaPage = lazy(() =>
     default: m.RegistrarConsultaPage,
   })),
 )
+export const PacientesPage = lazy(() =>
+  import("@/features/veterinario/pacientes-page").then((m) => ({
+    default: m.PacientesPage,
+  })),
+)
 export const FichaPacientePage = lazy(() =>
   import("@/features/veterinario/ficha-paciente-page").then((m) => ({
     default: m.FichaPacientePage,

@@ -306,9 +306,7 @@ function Acciones({
     <div className="flex items-center justify-end gap-2">
       {cita.estado === "AGENDADA" && (
         <Button asChild size="sm">
-          <Link
-            to={`/veterinario/consulta/${cita.id}?mascota=${cita.mascotaId}`}
-          >
+          <Link to={`/veterinario/consulta/${cita.id}`}>
             <ClipboardPlus />
             Registrar consulta
           </Link>

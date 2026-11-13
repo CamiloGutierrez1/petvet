@@ -1,9 +1,5 @@
 [
   { "mascotaId": 1, "vacuna": "Rabia", "fechaLimite": "2026-12-12" },
-  {
-    "mascotaId": 1,
-    "vacuna": "Polivalente (refuerzo)",
-    "fechaLimite": "2027-01-20"
-  },
+  { "mascotaId": 1, "vacuna": "Polivalente", "fechaLimite": "2027-01-20" },
   { "mascotaId": 2, "vacuna": "Triple felina", "fechaLimite": "2026-11-30" }
 ]

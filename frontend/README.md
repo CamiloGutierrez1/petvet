@@ -171,21 +171,21 @@ Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Ci
 
 ## Rutas
 
-Están en `src/routes/router.tsx`. Las vistas que aún no existen muestran una página provisional; para construir una, se reemplaza `<PaginaPendiente ... />` por el componente real.
+Están en `src/routes/router.tsx`. Todas las pantallas se cargan bajo demanda desde `src/routes/paginas.tsx`.
 
-| Ruta                                | Vista                                        | Responsable | Estado    |
-| ----------------------------------- | -------------------------------------------- | ----------- | --------- |
-| `/`                                 | Entrada: rol + correo (dueño) o lista (vet.) | Camilo      | Listo     |
-| `/registro`                         | Registro de dueño (fuera de los layouts)     | Camilo      | Listo     |
-| `/dueno`                            | Inicio: resumen con secciones "Ver todas"    | Camilo      | Listo     |
-| `/dueno/mascotas`                   | Mis mascotas                                 | Camilo      | Listo     |
-| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                          | Camilo      | Listo     |
-| `/dueno/agendar`                    | Agendar cita                                 | Camilo      | Listo     |
-| `/dueno/citas`                      | Mis citas                                    | Camilo      | Listo     |
-| `/veterinario/agenda`               | Agenda del día                               | Daza        | Listo     |
-| `/veterinario/consulta/:citaId`     | Registrar consulta                           | Daza        | Listo     |
-| `/veterinario/pacientes`            | Pacientes (lista, destino del menú)          | Daza        | Pendiente |
-| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial             | Daza        | Listo     |
+| Ruta                                | Vista                                        | Responsable | Estado |
+| ----------------------------------- | -------------------------------------------- | ----------- | ------ |
+| `/`                                 | Entrada: rol + correo (dueño) o lista (vet.) | Camilo      | Listo  |
+| `/registro`                         | Registro de dueño (fuera de los layouts)     | Camilo      | Listo  |
+| `/dueno`                            | Inicio: resumen con secciones "Ver todas"    | Camilo      | Listo  |
+| `/dueno/mascotas`                   | Mis mascotas                                 | Camilo      | Listo  |
+| `/dueno/mascotas/:mascotaId`        | Ficha de la mascota                          | Camilo      | Listo  |
+| `/dueno/agendar`                    | Agendar cita                                 | Camilo      | Listo  |
+| `/dueno/citas`                      | Mis citas                                    | Camilo      | Listo  |
+| `/veterinario/agenda`               | Agenda del día                               | Daza        | Listo  |
+| `/veterinario/consulta/:citaId`     | Registrar consulta                           | Daza        | Listo  |
+| `/veterinario/pacientes`            | Pacientes (lista, destino del menú)          | Daza        | Listo  |
+| `/veterinario/pacientes/:mascotaId` | Ficha del paciente con historial             | Daza        | Listo  |
 
 Si necesitas otra ruta, agrégala en tu sección del router y menciónalo en el PR.
 
@@ -202,7 +202,7 @@ Instalados en `src/components/ui/`: avatar, badge, button, calendar, card, dialo
 
 Para agregar otro: `npx shadcn@latest add <nombre>` desde `frontend/`. Avisa en el grupo para no instalar lo mismo dos veces.
 
-**Componentes propios compartidos** (`src/components/`): `EstadoCitaBadge`, `TablaDatos`, `EstadoVacio`, `EstadoError`, `CargandoSkeleton`, `EncabezadoPagina` (de Daza), `Logo`, `PaginaPendiente` y `ListaTextos` (lista de textos con etiquetas: se escribe, Enter y queda como etiqueta que se puede quitar; acepta `sugerencias`. Se usa en Registrar consulta para vacunas, tratamientos y exámenes).
+**Componentes propios compartidos** (`src/components/`): `EstadoCitaBadge`, `TablaDatos`, `EstadoVacio`, `EstadoError`, `CargandoSkeleton`, `EncabezadoPagina` (de Daza), `Logo`, `CargandoPagina` y `ListaTextos` (lista de textos con etiquetas: se escribe, Enter y queda como etiqueta que se puede quitar; acepta `sugerencias`. Se usa en Registrar consulta para vacunas, tratamientos y exámenes).
 
 **Formularios:** la versión actual de shadcn ya no trae el componente `form`; lo reemplazó por **`field`** (`Field`, `FieldLabel`, `FieldError`, etc.). Los formularios se hacen con React Hook Form + Zod para el estado y la validación, y `field` para la parte visual. Los dos usamos esta misma forma.
 

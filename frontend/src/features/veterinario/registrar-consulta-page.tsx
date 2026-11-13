@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import {
   CircleAlert,
   ClipboardCheck,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { ahoraIsoLocal } from "@/api/http"
-import { mensajeDeError } from "@/api/errores"
+import { estadoHttp, mensajeDeError } from "@/api/errores"
 import type { Cita, MascotaDetalle } from "@/api/types"
 import { EncabezadoPagina } from "@/components/encabezado-pagina"
 import { EstadoError } from "@/components/estado-error"
@@ -73,20 +73,19 @@ const esquema = z.object({
 
 type FormularioConsulta = z.infer<typeof esquema>
 
-/** Ruta "/veterinario/consulta/:citaId?mascota=id". */
+/** Ruta "/veterinario/consulta/:citaId". */
 export function RegistrarConsultaPage() {
   const citaId = Number(useParams().citaId)
-  const mascotaId = Number(useSearchParams()[0].get("mascota"))
   const { perfil } = usePerfil()
 
-  const { cita, isLoading, error, refetch } = useCita(mascotaId, citaId)
-  const ficha = useMascota(mascotaId)
+  const { data: cita, isLoading, error, refetch } = useCita(citaId)
   const volverA = cita
     ? `/veterinario/agenda?fecha=${cita.fechaHora.slice(0, 10)}`
     : "/veterinario/agenda"
 
-  if (!mascotaId) return <CitaNoEncontrada />
+  if (!citaId) return <CitaNoEncontrada />
   if (isLoading) return <ConsultaCargando />
+  if (estadoHttp(error) === 404) return <CitaNoEncontrada />
   if (error) {
     return (
       <>
@@ -122,11 +121,17 @@ export function RegistrarConsultaPage() {
     )
   }
 
+  return <ConsultaDeCita cita={cita} volverA={volverA} />
+}
+
+/** Con la cita ya cargada: datos del paciente (de Mascotas) + formulario. */
+function ConsultaDeCita({ cita, volverA }: { cita: Cita; volverA: string }) {
+  const ficha = useMascota(cita.mascotaId)
   return (
     <>
       <EncabezadoPagina
         titulo="Registrar consulta"
-        descripcion={`${ficha.data?.nombre ?? `Mascota #${mascotaId}`} · ${formatearFechaHora(cita.fechaHora)}`}
+        descripcion={`${ficha.data?.nombre ?? `Mascota #${cita.mascotaId}`} · ${formatearFechaHora(cita.fechaHora)}`}
         volverA={volverA}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
