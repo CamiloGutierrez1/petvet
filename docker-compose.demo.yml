@@ -20,6 +20,8 @@ services:
     environment:
       PETVET_MASCOTAS_URL: http://mascotas-demo:8080
       PETVET_VACUNAS_CRON: "0 * * * * *"
+      # Agrega el historial de ejemplo de Tobby, Misha y Kiwi (db/demo/R__historial_demo.sql).
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/demo
     depends_on:
       mascotas-demo:
         condition: service_healthy

@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 interface SpringDataCitaRepository extends JpaRepository<CitaEntity, Long> {
     List<CitaEntity> findByMascotaIdOrderByFechaHoraDescIdDesc(long mascotaId);
 
+    List<CitaEntity> findByVeterinarioIdOrderByFechaHoraDescIdDesc(long veterinarioId);
+
     @Query("select distinct cita.mascotaId from CitaEntity cita order by cita.mascotaId")
     List<Long> mascotasConCitas();
 

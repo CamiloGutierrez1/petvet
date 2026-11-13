@@ -29,34 +29,33 @@ def nacimiento_cachorro(hoy):
     raise RuntimeError("No se pudo construir la fecha de la mascota de demostración")
 
 
-def mascotas_demo():
-    hoy = datetime.now(BOGOTA).date()
+LAURA = ("Laura Méndez", "laura.mendez@correo.com")
+SANTIAGO = ("Santiago Rojas", "santiago.rojas@correo.com")
+
+
+def ficha(id_mascota, nombre, especie, nacimiento, dueno):
     return {
-        1: {
-            "id": 1,
-            "nombre": "Luna Demo",
-            "especie": "GATO",
-            "fechaNacimiento": mover_meses(hoy, -36).isoformat(),
-            "duenoNombre": "Dueño Demo 1",
-            "duenoEmail": "dueno1@example.test",
-        },
-        2: {
-            "id": 2,
-            "nombre": "Bolita Demo",
-            "especie": "PERRO",
-            "fechaNacimiento": mover_meses(hoy, -120).isoformat(),
-            "duenoNombre": "Dueño Demo 2",
-            "duenoEmail": "dueno2@example.test",
-        },
-        3: {
-            "id": 3,
-            "nombre": "Tito Demo",
-            "especie": "PERRO",
-            "fechaNacimiento": nacimiento_cachorro(hoy).isoformat(),
-            "duenoNombre": "Dueño Demo 3",
-            "duenoEmail": "dueno3@example.test",
-        },
+        "id": id_mascota,
+        "nombre": nombre,
+        "especie": especie,
+        "fechaNacimiento": nacimiento.isoformat(),
+        "duenoNombre": dueno[0],
+        "duenoEmail": dueno[1],
     }
+
+
+def mascotas_demo():
+    # 1, 2 y 3 son las mascotas de frontend/src/mocks/mascotas.json. Su historial de ejemplo está en
+    # ms-citas-historial/src/main/resources/db/demo/R__historial_demo.sql.
+    # 4 es un cachorro cuya primera vacuna vence en los próximos días, para mostrar vacuna.proxima.
+    hoy = datetime.now(BOGOTA).date()
+    fichas = (
+        ficha(1, "Tobby", "PERRO", date(2021, 4, 18), LAURA),
+        ficha(2, "Misha", "GATO", date(2023, 9, 2), LAURA),
+        ficha(3, "Kiwi", "AVE", date(2024, 2, 11), SANTIAGO),
+        ficha(4, "Max", "PERRO", nacimiento_cachorro(hoy), SANTIAGO),
+    )
+    return {mascota["id"]: mascota for mascota in fichas}
 
 
 class MascotasDemoHandler(BaseHTTPRequestHandler):

@@ -50,7 +50,15 @@ public class CitasController {
         return ResponseEntity.created(URI.create("/api/citas?mascotaId=" + cita.mascotaId())).body(cita);
     }
 
+    @GetMapping("/citas/{id}")
+    @Operation(summary = "Consultar una cita", description = "Devuelve la cita con su estado actual o 404 si no existe.")
+    public Cita cita(@PathVariable @Positive long id) {
+        return agenda.buscar(id);
+    }
+
     @GetMapping("/citas")
+    @Operation(summary = "Listar citas", description = "Filtra por mascotaId, por veterinarioId (todas sus citas, "
+            + "de la más reciente a la más antigua) o por veterinarioId y fecha (agenda del día).")
     public List<Cita> citas(@RequestParam(required = false) @Positive Long mascotaId,
             @RequestParam(required = false) @Positive Long veterinarioId,
             @RequestParam(required = false) LocalDate fecha) {

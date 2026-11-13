@@ -53,16 +53,19 @@ Estas rutas corresponden al plan. Pia implementa el módulo.
 | `GET /api/veterinarios` | `200`, arreglo de `Veterinario` | Listar veterinarios. |
 | `GET /api/veterinarios/{id}/disponibilidad?fecha=2026-11-20` | `200`, objeto `Disponibilidad` | Consultar las horas libres de un veterinario en la fecha indicada. |
 | `POST /api/citas` | `201`, objeto `Cita` | Agendar y guardar `cita.agendada` para publicación. |
-| `GET /api/citas?mascotaId={id}` | `200`, arreglo de `Cita` | Consultar las citas de una mascota. |
-| `GET /api/citas?veterinarioId={id}&fecha=2026-11-20` | `200`, arreglo de `Cita` | Consultar la agenda de un veterinario para la fecha indicada. |
+| `GET /api/citas/{id}` | `200`, objeto `Cita` | Consultar una cita con su estado actual, por ejemplo para registrar su consulta. |
+| `GET /api/citas?mascotaId={id}` | `200`, arreglo de `Cita` | Consultar las citas de una mascota, de la más reciente a la más antigua. |
+| `GET /api/citas?veterinarioId={id}` | `200`, arreglo de `Cita` | Consultar todas las citas de un veterinario, de la más reciente a la más antigua, incluidas las canceladas. Sirve para armar su lista de pacientes. |
+| `GET /api/citas?veterinarioId={id}&fecha=2026-11-20` | `200`, arreglo de `Cita` | Consultar la agenda de un veterinario para la fecha indicada, en orden de hora. |
 | `PATCH /api/citas/{id}/cancelar` | `200`, objeto `Cita` | Cancelar una cita. |
 | `POST /api/citas/{id}/consulta` | `201`, objeto `RegistroHistorial` | Registrar la consulta, completar la cita y guardar `cita.completada` para publicación. |
 | `GET /api/mascotas/{id}/historial` | `200`, arreglo de `RegistroHistorial` | Consultar el historial clínico de una mascota. |
-| `GET /api/mascotas/{id}/proximas-vacunas` | `200`, arreglo de `VacunaPendiente` | Consultar las vacunas ficticias pendientes de una mascota. |
+| `GET /api/mascotas/{id}/proximas-vacunas` | `200`, arreglo de `VacunaPendiente` | Consultar las vacunas pendientes de una mascota, en orden de vencimiento. |
 
 #### Formatos y validaciones
 
-- Los identificadores son enteros positivos. `GET /api/citas` acepta `mascotaId` solo o `veterinarioId` junto con `fecha`.
+- Los identificadores son enteros positivos. `GET /api/citas` acepta `mascotaId` solo, `veterinarioId` solo o `veterinarioId` junto con `fecha`. Otra combinación responde `400`, y un veterinario inexistente, `404`.
+- Las vacunas que calcula Citas son `Polivalente` (perros), `Triple felina` (gatos) y `Rabia`. Para que una vacuna aplicada cuente en el cálculo, la consulta debe registrarla con ese mismo nombre; no importan las mayúsculas.
 - Las fechas de calendario usan ISO, por ejemplo `2026-11-20`. Las fechas con hora de negocio usan ISO local sin desplazamiento, por ejemplo `2026-11-20T09:30:00`, en `America/Bogota` por defecto. Se admiten los años 1 a 9999.
 - Tipos de servicio `CONSULTA_GENERAL`, `VACUNACION`, `CONTROL` y `ESPECIALISTA`. Tipos de consulta `GENERAL` y `ESPECIALISTA`. Estados de cita `AGENDADA`, `COMPLETADA` y `CANCELADA`.
 - La consulta exige diagnóstico. Vacunas aplicadas, tratamientos, exámenes, observaciones y próximo control son opcionales. El próximo control debe caer en la fecha de la consulta o después.

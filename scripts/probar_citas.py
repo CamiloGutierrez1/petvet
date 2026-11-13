@@ -17,7 +17,8 @@ from datetime import datetime, timedelta, timezone
 CITAS = "http://localhost:8082"
 RABBIT = "http://localhost:15672/api"
 BOGOTA = timezone(timedelta(hours=-5))
-MASCOTA_ID = 3
+# Max, el cachorro de scripts/mascotas_demo.py: así el historial de Tobby, Misha y Kiwi queda intacto.
+MASCOTA_ID = 4
 COLA_CITAS = "petvet.demo.citas"
 COLA_VACUNAS = "petvet.demo.vacunas"
 

@@ -21,7 +21,7 @@ class RegistroHistorialBuilderTest {
         RegistroHistorial registro = nuevoBuilder()
                 .diagnostico("Consulta de demostración")
                 .tipoConsulta(TipoConsulta.ESPECIALISTA)
-                .vacunasAplicadas(List.of("Vacuna demo adulto"))
+                .vacunasAplicadas(List.of("Rabia"))
                 .tratamientos(List.of("Tratamiento ficticio"))
                 .examenes(List.of("Examen ficticio"))
                 .observaciones("Datos académicos")
@@ -35,7 +35,7 @@ class RegistroHistorialBuilderTest {
         assertThat(registro.fecha()).isEqualTo(FECHA);
         assertThat(registro.tipoConsulta()).isEqualTo(TipoConsulta.ESPECIALISTA);
         assertThat(registro.diagnostico()).isEqualTo("Consulta de demostración");
-        assertThat(registro.vacunasAplicadas()).containsExactly("Vacuna demo adulto");
+        assertThat(registro.vacunasAplicadas()).containsExactly("Rabia");
         assertThat(registro.tratamientos()).containsExactly("Tratamiento ficticio");
         assertThat(registro.examenes()).containsExactly("Examen ficticio");
         assertThat(registro.observaciones()).isEqualTo("Datos académicos");
@@ -62,7 +62,7 @@ class RegistroHistorialBuilderTest {
 
     @Test
     void elRegistroConservaUnaCopiaInmutableDeLasListas() {
-        List<String> vacunas = new ArrayList<>(List.of("Vacuna demo adulto"));
+        List<String> vacunas = new ArrayList<>(List.of("Rabia"));
         List<String> tratamientos = new ArrayList<>(List.of("Tratamiento inicial"));
         List<String> examenes = new ArrayList<>(List.of("Examen inicial"));
         RegistroHistorial registro = nuevoBuilder()
@@ -76,7 +76,7 @@ class RegistroHistorialBuilderTest {
         tratamientos.clear();
         examenes.clear();
 
-        assertThat(registro.vacunasAplicadas()).containsExactly("Vacuna demo adulto");
+        assertThat(registro.vacunasAplicadas()).containsExactly("Rabia");
         assertThat(registro.tratamientos()).containsExactly("Tratamiento inicial");
         assertThat(registro.examenes()).containsExactly("Examen inicial");
         assertThatThrownBy(() -> registro.vacunasAplicadas().add("Otra"))

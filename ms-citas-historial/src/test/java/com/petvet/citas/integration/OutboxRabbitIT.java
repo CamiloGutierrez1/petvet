@@ -211,7 +211,7 @@ class OutboxRabbitIT {
         assertThat(contenido.path("mascotaId").asLong()).isEqualTo(3);
         assertThat(contenido.path("mascotaNombre").asText()).isEqualTo("Cachorro Demo");
         assertThat(contenido.path("duenoEmail").asText()).isEqualTo("demo@example.test");
-        assertThat(contenido.path("vacuna").asText()).isEqualTo("Vacuna demo cachorro");
+        assertThat(contenido.path("vacuna").asText()).isEqualTo("Polivalente");
         assertThat(contenido.path("fechaLimite").asText()).isEqualTo(vencimiento.toString());
         assertThat(leerMensaje(colaVacunas)).isNull();
         assertThat(leerMensaje(colaCitas)).isNotNull();
