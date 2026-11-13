@@ -1,5 +1,4 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
-import { PaginaPendiente } from "@/components/pagina-pendiente"
 import { RequierePerfil } from "@/features/perfil/requiere-perfil"
 import { EntradaPage } from "@/features/perfil/entrada-page"
 import { LayoutDueno } from "@/layouts/LayoutDueno"
@@ -12,6 +11,7 @@ import {
   InicioDuenoPage,
   MisCitasPage,
   MisMascotasPage,
+  PacientesPage,
   RegistrarConsultaPage,
   RegistroDuenoPage,
 } from "./paginas"
@@ -52,10 +52,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="agenda" replace /> },
           { path: "agenda", element: <AgendaPage /> },
           { path: "consulta/:citaId", element: <RegistrarConsultaPage /> },
-          {
-            path: "pacientes",
-            element: <PaginaPendiente titulo="Pacientes" responsable="Daza" />,
-          },
+          { path: "pacientes", element: <PacientesPage /> },
           { path: "pacientes/:mascotaId", element: <FichaPacientePage /> },
         ],
       },
