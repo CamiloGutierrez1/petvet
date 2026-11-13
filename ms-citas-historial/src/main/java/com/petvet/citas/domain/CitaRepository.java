@@ -16,6 +16,9 @@ public interface CitaRepository {
 
     List<Cita> agenda(long veterinarioId, LocalDate fecha);
 
+    /** Todas las citas del veterinario, de la más reciente a la más antigua. */
+    List<Cita> porVeterinario(long veterinarioId);
+
     List<Long> mascotasConCitas();
 
     /** Indica si el veterinario tiene una cita vigente que se cruza con el turno solicitado. */

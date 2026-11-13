@@ -153,6 +153,43 @@ class CitasApiIT {
     }
 
     @Test
+    void consultaUnaCitaPorSuIdConSuEstadoActual() throws Exception {
+        long id = agendar(3, 2, fecha.atTime(11, 0)).cuerpo().path("id").asLong();
+
+        var cita = consultar("GET", "/api/citas/" + id, null);
+        assertThat(cita.estado()).isEqualTo(200);
+        assertThat(cita.cuerpo().path("id").asLong()).isEqualTo(id);
+        assertThat(cita.cuerpo().path("mascotaId").asLong()).isEqualTo(3);
+        assertThat(cita.cuerpo().path("veterinarioId").asLong()).isEqualTo(2);
+        assertThat(LocalDateTime.parse(cita.cuerpo().path("fechaHora").asText())).isEqualTo(fecha.atTime(11, 0));
+        assertThat(cita.cuerpo().path("tipoServicio").asText()).isEqualTo("CONSULTA_GENERAL");
+        assertThat(cita.cuerpo().path("estado").asText()).isEqualTo("AGENDADA");
+
+        consultar("PATCH", "/api/citas/" + id + "/cancelar", null);
+        assertThat(consultar("GET", "/api/citas/" + id, null).cuerpo().path("estado").asText())
+                .isEqualTo("CANCELADA");
+    }
+
+    @Test
+    void sinFechaListaTodasLasCitasDelVeterinarioDeLaMasRecienteALaMasAntigua() throws Exception {
+        long primera = agendar(3, 1, fecha.atTime(9, 0)).cuerpo().path("id").asLong();
+        long otroDia = agendar(4, 1, fecha.plusDays(1).atTime(8, 30)).cuerpo().path("id").asLong();
+        long cancelada = agendar(5, 1, fecha.atTime(15, 0)).cuerpo().path("id").asLong();
+        consultar("PATCH", "/api/citas/" + cancelada + "/cancelar", null);
+        agendar(3, 2, fecha.atTime(10, 0));
+
+        var citas = consultar("GET", "/api/citas?veterinarioId=1", null);
+        assertThat(citas.estado()).isEqualTo(200);
+        assertThat(citas.cuerpo().findValuesAsText("id").stream().map(Long::parseLong).toList())
+                .containsExactly(otroDia, cancelada, primera);
+        assertThat(citas.cuerpo().findValuesAsText("veterinarioId")).containsOnly("1");
+
+        var agendaDelDia = consultar("GET", "/api/citas?veterinarioId=1&fecha=" + fecha, null);
+        assertThat(agendaDelDia.cuerpo().findValuesAsText("id").stream().map(Long::parseLong).toList())
+                .containsExactly(primera, cancelada);
+    }
+
+    @Test
     void unaMascotaNoPuedeTenerDosVeterinariosEnElMismoHorario() throws Exception {
         assertThat(agendar(3, 1, fecha.atTime(10, 30)).estado()).isEqualTo(201);
         assertError(agendar(3, 2, fecha.atTime(10, 30)), 409);
@@ -329,7 +366,10 @@ class CitasApiIT {
     void rechazaDatosFueraDelContratoConUnErrorEstructurado() throws Exception {
         assertError(consultar("GET", "/api/citas", null), 400);
         assertError(consultar("GET", "/api/citas?mascotaId=3&veterinarioId=1&fecha=" + fecha, null), 400);
-        assertError(consultar("GET", "/api/citas?veterinarioId=1", null), 400);
+        assertError(consultar("GET", "/api/citas?fecha=" + fecha, null), 400);
+        assertError(consultar("GET", "/api/citas?mascotaId=3&veterinarioId=1", null), 400);
+        assertError(consultar("GET", "/api/citas/0", null), 400);
+        assertError(consultar("GET", "/api/citas?veterinarioId=0", null), 400);
         assertError(consultar("GET", "/api/veterinarios/1/disponibilidad?fecha=invalida", null), 400);
         assertError(agendar(-1, 1, fecha.atTime(9, 0)), 400);
         assertError(consultar("GET", "/api/citas?mascotaId=-5", null), 400);
@@ -367,6 +407,8 @@ class CitasApiIT {
         assertError(agendar(3, 999, fecha.atTime(9, 0)), 404);
         assertError(consultar("GET", "/api/veterinarios/999/disponibilidad?fecha=" + fecha, null), 404);
         assertError(consultar("PATCH", "/api/citas/999/cancelar", null), 404);
+        assertError(consultar("GET", "/api/citas/999", null), 404);
+        assertError(consultar("GET", "/api/citas?veterinarioId=999", null), 404);
         assertError(consultar("POST", "/api/citas/999/consulta", datosConsulta()), 404);
     }
 

@@ -53,6 +53,13 @@ public class JpaCitaRepository implements CitaRepository {
     }
 
     @Override
+    public List<Cita> porVeterinario(long veterinarioId) {
+        return repository.findByVeterinarioIdOrderByFechaHoraDescIdDesc(veterinarioId).stream()
+                .map(CitaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<Long> mascotasConCitas() {
         return repository.mascotasConCitas();
     }

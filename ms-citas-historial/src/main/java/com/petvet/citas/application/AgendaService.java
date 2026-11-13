@@ -84,16 +84,29 @@ public class AgendaService {
     }
 
     @Transactional(readOnly = true)
+    public Cita buscar(long id) {
+        return citas.buscarPorId(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La cita no existe"));
+    }
+
+    /**
+     * Filtros admitidos: solo {@code mascotaId}; solo {@code veterinarioId} (todas sus citas, para la
+     * lista de pacientes), o {@code veterinarioId} con {@code fecha} (la agenda de ese día).
+     */
+    @Transactional(readOnly = true)
     public List<Cita> listar(Long mascotaId, Long veterinarioId, LocalDate fecha) {
         if (mascotaId != null && veterinarioId == null && fecha == null) {
             return citas.porMascota(mascotaId);
         }
-        if (mascotaId == null && veterinarioId != null && fecha != null) {
-            validarFecha(fecha);
+        if (mascotaId == null && veterinarioId != null) {
             veterinario(veterinarioId);
+            if (fecha == null) {
+                return citas.porVeterinario(veterinarioId);
+            }
+            validarFecha(fecha);
             return citas.agenda(veterinarioId, fecha);
         }
-        throw new IllegalArgumentException("Use mascotaId o la combinación veterinarioId y fecha");
+        throw new IllegalArgumentException("Use mascotaId, veterinarioId o la combinación veterinarioId y fecha");
     }
 
     private void validarFecha(LocalDate fecha) {
