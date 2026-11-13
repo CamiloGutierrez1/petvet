@@ -72,7 +72,8 @@ class VacunasServiceTest {
         assertThat(evento.mascotaId()).isEqualTo(MASCOTA_ID);
         assertThat(evento.mascotaNombre()).isEqualTo("Mascota de demostración");
         assertThat(evento.duenoEmail()).isEqualTo("dueno@example.test");
-        assertThat(evento.vacuna()).isEqualTo("Vacuna demo cachorro");
+        assertThat(evento.vacuna()).as("la rabia del cachorro vence un mes después, fuera de la ventana")
+                .isEqualTo("Polivalente");
         assertThat(evento.fechaLimite()).isEqualTo(vencimiento);
         verifyNoMoreInteractions(eventos);
         assertThat(transacciones.abiertas()).isEqualTo(1);
@@ -106,7 +107,8 @@ class VacunasServiceTest {
 
         List<VacunaPendiente> resultado = servicio.proximas(MASCOTA_ID);
 
-        assertThat(resultado).containsExactly(new VacunaPendiente("Vacuna demo cachorro", vencimiento));
+        assertThat(resultado).containsExactly(new VacunaPendiente("Polivalente", vencimiento),
+                new VacunaPendiente("Rabia", vencimiento.minusMonths(2).plusMonths(3)));
         verifyNoInteractions(eventos);
     }
 

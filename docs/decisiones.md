@@ -26,13 +26,15 @@ El historial carga sus listas de vacunas, tratamientos y exámenes por lotes (`h
 
 ## Vacunación de demostración
 
-Las reglas académicas son ficticias. `SelectorEsquemaVacunacion` toma la especie y la edad en meses cumplidos para elegir un esquema. Perros y gatos usan estas reglas. Para `AVE` y `OTRO` se devuelve una lista vacía.
+Las reglas son un calendario académico simplificado con nombres de vacunas reales; no reemplazan el criterio del veterinario. `SelectorEsquemaVacunacion` toma la especie y la edad en meses cumplidos para elegir un esquema. Perros y gatos usan estas reglas. Para `AVE` y `OTRO` se devuelve una lista vacía. La vacuna combinada es `Polivalente` en perros y `Triple felina` en gatos. Cada vacuna se calcula por separado desde su última aplicación registrada, y el resultado sale en orden de vencimiento.
 
-| Edad | Vacuna ficticia | Primera fecha límite | Refuerzo |
+| Edad | Vacuna | Primera fecha límite | Refuerzo |
 | --- | --- | --- | --- |
-| Menos de 12 meses | Vacuna demo cachorro | Nacimiento + 2 meses | Se omite si ya figura aplicada. |
-| 12 a 83 meses | Vacuna demo adulto | Nacimiento + 12 meses | Última aplicación + 12 meses. |
-| 84 meses en adelante | Vacuna demo geriátrico | Nacimiento + 84 meses | Última aplicación + 6 meses. |
+| Menos de 12 meses | Combinada | Nacimiento + 2 meses | Se omite si ya figura aplicada. |
+| Menos de 12 meses | `Rabia` | Nacimiento + 3 meses | Se omite si ya figura aplicada. |
+| 12 a 83 meses | Combinada y `Rabia` | Nacimiento + 12 meses | Última aplicación + 12 meses. |
+| 84 meses en adelante | `Rabia` | Nacimiento + 84 meses | Última aplicación + 12 meses. |
+| 84 meses en adelante | Combinada | Nacimiento + 84 meses | Última aplicación + 36 meses. |
 
 `RecordatoriosVacunasJob` revisa las mascotas conocidas por Citas, incluidas las que tienen o tuvieron una cita y aún no tienen historial clínico. La tarea corre a las 08:00 en la zona configurada y cada minuto en el Compose de demo. Publica si el vencimiento cae entre hoy y hoy más siete días, incluidos los extremos. La clave mascota, vacuna y fecha límite evita generar el mismo recordatorio al volver a ejecutar la tarea. El cálculo puede mostrar una vacuna vencida en la consulta de próximas vacunas. El recordatorio aplica su propia ventana.
 

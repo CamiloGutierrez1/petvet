@@ -98,11 +98,16 @@ class CitasApiIT {
     }
 
     @Test
-    void listaLosTresVeterinariosYLaDisponibilidadDeUnDia() throws Exception {
+    void listaLosVeterinariosDelCatalogoYLaDisponibilidadDeUnDia() throws Exception {
         var veterinarios = consultar("GET", "/api/veterinarios", null);
         assertThat(veterinarios.estado()).isEqualTo(200);
-        assertThat(veterinarios.cuerpo().size()).isEqualTo(3);
+        assertThat(veterinarios.cuerpo().size()).isEqualTo(5);
         assertThat(veterinarios.cuerpo().get(0).path("id").asLong()).isEqualTo(1);
+        assertThat(veterinarios.cuerpo().get(0).path("nombre").asText()).isEqualTo("Dra. Paula Castaño");
+        assertThat(veterinarios.cuerpo().findValuesAsText("especialidad"))
+                .contains("Cirugía", "Odontología")
+                .noneMatch(especialidad -> especialidad.isBlank());
+        assertThat(veterinarios.cuerpo().findValuesAsText("nombre")).noneMatch(nombre -> nombre.contains("Demo"));
 
         var disponibilidad = consultar("GET", "/api/veterinarios/1/disponibilidad?fecha=" + fecha, null);
         assertThat(disponibilidad.estado()).isEqualTo(200);

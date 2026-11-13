@@ -47,12 +47,12 @@ class VacunacionStrategyTest {
     void elSelectorUsaMesesCumplidosAlCambiarDeEsquema() {
         Mascota mascota = mascota(Especie.PERRO, LocalDate.of(2025, 11, 10));
 
-        assertThat(selector().proximasVacunas(mascota, List.of(), HOY))
-                .extracting(VacunaPendiente::vacuna)
-                .containsExactly("Vacuna demo cachorro");
-        assertThat(selector().proximasVacunas(mascota, List.of(), HOY.plusDays(1)))
-                .extracting(VacunaPendiente::vacuna)
-                .containsExactly("Vacuna demo adulto");
+        assertThat(selector().proximasVacunas(mascota, List.of(), HOY)).containsExactly(
+                new VacunaPendiente("Polivalente", LocalDate.of(2026, 1, 10)),
+                new VacunaPendiente("Rabia", LocalDate.of(2026, 2, 10)));
+        assertThat(selector().proximasVacunas(mascota, List.of(), HOY.plusDays(1))).containsExactly(
+                new VacunaPendiente("Polivalente", LocalDate.of(2026, 11, 10)),
+                new VacunaPendiente("Rabia", LocalDate.of(2026, 11, 10)));
     }
 
     @Test
@@ -63,35 +63,42 @@ class VacunacionStrategyTest {
     }
 
     @Test
-    void elEsquemaCachorroProponeUnaDosisYLaRetiraAlEstarAplicada() {
+    void lasDosisDelCachorroSeRetiranAlEstarAplicadas() {
         Mascota mascota = mascota(Especie.GATO, LocalDate.of(2026, 9, 15));
         EsquemaCachorro esquema = new EsquemaCachorro();
 
-        assertThat(esquema.proximasVacunas(mascota, List.of(), HOY))
-                .containsExactly(new VacunaPendiente("Vacuna demo cachorro", LocalDate.of(2026, 11, 15)));
+        assertThat(esquema.proximasVacunas(mascota, List.of(), HOY)).containsExactly(
+                new VacunaPendiente("Triple felina", LocalDate.of(2026, 11, 15)),
+                new VacunaPendiente("Rabia", LocalDate.of(2026, 12, 15)));
         assertThat(esquema.proximasVacunas(mascota,
-                List.of(registro("Vacuna demo cachorro", LocalDate.of(2026, 10, 30))), HOY))
+                List.of(registro(LocalDate.of(2026, 10, 30), "Triple felina")), HOY))
+                .containsExactly(new VacunaPendiente("Rabia", LocalDate.of(2026, 12, 15)));
+        assertThat(esquema.proximasVacunas(mascota,
+                List.of(registro(LocalDate.of(2026, 10, 30), "Triple felina", "Rabia")), HOY))
                 .isEmpty();
     }
 
     @Test
-    void elEsquemaAdultoCalculaElRefuerzoDesdeLaUltimaAplicacion() {
+    void elEsquemaAdultoCalculaCadaRefuerzoDesdeSuUltimaAplicacion() {
         Mascota mascota = mascota(Especie.PERRO, LocalDate.of(2023, 5, 4));
         List<RegistroHistorial> historial = List.of(
-                registro("Vacuna demo adulto", LocalDate.of(2024, 5, 20)),
-                registro("Otra vacuna de demo", LocalDate.of(2026, 10, 30)),
-                registro("Vacuna demo adulto", LocalDate.of(2025, 11, 12)));
+                registro(LocalDate.of(2024, 5, 20), "Polivalente"),
+                registro(LocalDate.of(2026, 10, 30), "Otra vacuna"),
+                registro(LocalDate.of(2025, 11, 12), "Polivalente"),
+                registro(LocalDate.of(2026, 3, 1), " rabia "));
 
-        assertThat(new EsquemaAdulto().proximasVacunas(mascota, historial, HOY))
-                .containsExactly(new VacunaPendiente("Vacuna demo adulto", LocalDate.of(2026, 11, 12)));
+        assertThat(new EsquemaAdulto().proximasVacunas(mascota, historial, HOY)).containsExactly(
+                new VacunaPendiente("Polivalente", LocalDate.of(2026, 11, 12)),
+                new VacunaPendiente("Rabia", LocalDate.of(2027, 3, 1)));
     }
 
     @Test
     void unaDosisInicialVencidaSiguePendiente() {
         Mascota mascota = mascota(Especie.GATO, LocalDate.of(2024, 1, 31));
 
-        assertThat(new EsquemaAdulto().proximasVacunas(mascota, List.of(), HOY))
-                .containsExactly(new VacunaPendiente("Vacuna demo adulto", LocalDate.of(2025, 1, 31)));
+        assertThat(new EsquemaAdulto().proximasVacunas(mascota, List.of(), HOY)).containsExactly(
+                new VacunaPendiente("Rabia", LocalDate.of(2025, 1, 31)),
+                new VacunaPendiente("Triple felina", LocalDate.of(2025, 1, 31)));
     }
 
     @Test
@@ -99,19 +106,22 @@ class VacunacionStrategyTest {
         Mascota mascota = mascota(Especie.PERRO, LocalDate.of(2022, 1, 1));
 
         assertThat(new EsquemaAdulto().proximasVacunas(mascota,
-                List.of(registro("Vacuna demo adulto", LocalDate.of(2024, 2, 29))), HOY))
-                .containsExactly(new VacunaPendiente("Vacuna demo adulto", LocalDate.of(2025, 2, 28)));
+                List.of(registro(LocalDate.of(2024, 2, 29), "Polivalente", "Rabia")), HOY)).containsExactly(
+                new VacunaPendiente("Polivalente", LocalDate.of(2025, 2, 28)),
+                new VacunaPendiente("Rabia", LocalDate.of(2025, 2, 28)));
     }
 
     @Test
-    void elEsquemaGeriatricoUsaElUltimoRegistroParaSuRefuerzoSemestral() {
+    void elEsquemaGeriatricoRefuerzaRabiaCadaAnoYLaCombinadaCadaTresAnos() {
         Mascota mascota = mascota(Especie.GATO, LocalDate.of(2017, 3, 9));
 
-        assertThat(new EsquemaGeriatrico().proximasVacunas(mascota, List.of(), HOY))
-                .containsExactly(new VacunaPendiente("Vacuna demo geriátrico", LocalDate.of(2024, 3, 9)));
+        assertThat(new EsquemaGeriatrico().proximasVacunas(mascota, List.of(), HOY)).containsExactly(
+                new VacunaPendiente("Rabia", LocalDate.of(2024, 3, 9)),
+                new VacunaPendiente("Triple felina", LocalDate.of(2024, 3, 9)));
         assertThat(new EsquemaGeriatrico().proximasVacunas(mascota,
-                List.of(registro("Vacuna demo geriátrico", LocalDate.of(2026, 8, 31))), HOY))
-                .containsExactly(new VacunaPendiente("Vacuna demo geriátrico", LocalDate.of(2027, 2, 28)));
+                List.of(registro(LocalDate.of(2026, 8, 31), "Triple felina", "Rabia")), HOY)).containsExactly(
+                new VacunaPendiente("Rabia", LocalDate.of(2027, 8, 31)),
+                new VacunaPendiente("Triple felina", LocalDate.of(2029, 8, 31)));
     }
 
     @Test
@@ -146,10 +156,10 @@ class VacunacionStrategyTest {
         return new Mascota(1L, "Mascota demo", especie, nacimiento, "Dueño demo", "demo@example.test");
     }
 
-    private RegistroHistorial registro(String vacuna, LocalDate fecha) {
+    private RegistroHistorial registro(LocalDate fecha, String... vacunas) {
         return new RegistroHistorialBuilder(1L, 1L, 1L, fecha.atTime(9, 0))
                 .diagnostico("Consulta de demostración")
-                .vacunasAplicadas(List.of(vacuna))
+                .vacunasAplicadas(List.of(vacunas))
                 .build();
     }
 }

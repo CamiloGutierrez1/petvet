@@ -163,8 +163,9 @@ class RegistrarConsultaUseCaseTest {
         assertThat(completada.getValue().estado()).isEqualTo(EstadoCita.COMPLETADA);
         assertThat(completada.getValue().duracionMinutos()).isEqualTo(60);
         assertThat(evento.getValue()).isEqualTo(new CitaCompletadaEvento(42L, "Luna demo",
-                "dueno@example.test", "Diagnóstico demo", List.of("Vacuna demo adulto"), HOY.plusDays(14),
-                List.of(new VacunaPendiente("Vacuna demo adulto", HOY.plusMonths(12)))));
+                "dueno@example.test", "Diagnóstico demo", List.of("Rabia"), HOY.plusDays(14),
+                List.of(new VacunaPendiente("Triple felina", LocalDate.of(2025, 5, 1)),
+                        new VacunaPendiente("Rabia", HOY.plusMonths(12)))));
     }
 
     private Cita cita(EstadoCita estado) {
@@ -172,7 +173,7 @@ class RegistrarConsultaUseCaseTest {
     }
 
     private DatosConsulta datos(String diagnostico) {
-        return new DatosConsulta(TipoConsulta.GENERAL, diagnostico, List.of("Vacuna demo adulto"),
+        return new DatosConsulta(TipoConsulta.GENERAL, diagnostico, List.of("Rabia"),
                 List.of(), List.of(), "Consulta académica", HOY.plusDays(14));
     }
 }
