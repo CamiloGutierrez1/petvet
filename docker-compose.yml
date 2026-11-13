@@ -103,6 +103,8 @@ services:
       # El publicador reintenta los eventos pendientes de la outbox.
       PETVET_EVENTOS_HABILITADOS: ${PETVET_EVENTOS_HABILITADOS:-true}
       PETVET_EVENTOS_INTERVALO_MS: ${PETVET_EVENTOS_INTERVALO_MS:-5000}
+      # Con classpath:db/migration,classpath:db/demo se carga el historial de ejemplo.
+      SPRING_FLYWAY_LOCATIONS: ${PETVET_CITAS_MIGRACIONES:-classpath:db/migration}
     ports:
       - "127.0.0.1:8082:8082"
     depends_on:

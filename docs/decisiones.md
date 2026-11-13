@@ -36,6 +36,8 @@ Las reglas son un calendario académico simplificado con nombres de vacunas real
 | 84 meses en adelante | `Rabia` | Nacimiento + 84 meses | Última aplicación + 12 meses. |
 | 84 meses en adelante | Combinada | Nacimiento + 84 meses | Última aplicación + 36 meses. |
 
+Si una mascota no tiene ninguna aplicación registrada, la primera fecha límite puede quedar en el pasado y la vacuna aparece vencida. Para la demo, `db/demo/R__historial_demo.sql` carga un historial de ejemplo de Tobby, Misha y Kiwi (mascotas 1, 2 y 3, las mismas del front) con vacunas aplicadas hace 9 a 11 meses, así que sus refuerzos vencen en los próximos meses. Esa carga solo ocurre si Flyway incluye `classpath:db/demo`: el Compose de demo lo hace y el principal lo permite con `PETVET_CITAS_MIGRACIONES`.
+
 `RecordatoriosVacunasJob` revisa las mascotas conocidas por Citas, incluidas las que tienen o tuvieron una cita y aún no tienen historial clínico. La tarea corre a las 08:00 en la zona configurada y cada minuto en el Compose de demo. Publica si el vencimiento cae entre hoy y hoy más siete días, incluidos los extremos. La clave mascota, vacuna y fecha límite evita generar el mismo recordatorio al volver a ejecutar la tarea. El cálculo puede mostrar una vacuna vencida en la consulta de próximas vacunas. El recordatorio aplica su propia ventana.
 
 Si Mascotas y Dueños no responde, la tarea corta esa ejecución y retoma en la siguiente, en lugar de esperar el tiempo límite por cada mascota. Un error con una mascota puntual, por ejemplo una ficha eliminada, no impide revisar las demás. La tarea y el envío de la outbox usan hilos de planificación separados (`spring.task.scheduling.pool.size`), para que una no retrase a la otra.

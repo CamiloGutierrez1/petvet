@@ -8,6 +8,11 @@ spring:
     url: jdbc:postgresql://localhost:5434/citas
     username: ${PETVET_DB_USER:petvet}
     password: ${PETVET_DB_PASSWORD:petvet_local}
+  flyway:
+    # El historial de ejemplo (db/demo) es una migración repetible opcional. Si se aplicó con el
+    # Compose de demo y luego el servicio arranca sin esa carpeta sobre el mismo volumen, Flyway la
+    # vería como "missing" y no dejaría arrancar. Se tolera solo ese caso, además del valor por defecto.
+    ignore-migration-patterns: "*:future,repeatable:missing"
   jpa:
     open-in-view: false
     hibernate:

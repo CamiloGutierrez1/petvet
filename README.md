@@ -42,7 +42,7 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app --
 python3 scripts/probar_citas.py
 ```
 
-El Compose de demo dirige las consultas de Citas a `mascotas-demo:8080`, con fichas sintéticas, y ejecuta la revisión de vacunas cada minuto. El script comprueba disponibilidad, creación de una cita, rechazo de un turno duplicado, registro de consulta, historial y próximas vacunas. Espera hasta 90 segundos por los dos eventos de cita. Para comprobar también `vacuna.proxima`, ejecuta `python3 scripts/probar_citas.py --esperar-vacuna`.
+El Compose de demo dirige las consultas de Citas a `mascotas-demo:8080`, con las mascotas del front (Tobby, Misha y Kiwi) y un cachorro, Max, cuya primera vacuna vence en los próximos días. Carga además un historial de ejemplo con vacunas al día para las tres primeras y ejecuta la revisión de vacunas cada minuto. El script comprueba disponibilidad, creación de una cita, rechazo de un turno duplicado, registro de consulta, historial y próximas vacunas. Espera hasta 90 segundos por los dos eventos de cita. Para comprobar también `vacuna.proxima`, ejecuta `python3 scripts/probar_citas.py --esperar-vacuna`.
 
 Los eventos llegan a colas de prueba en RabbitMQ, que permiten demostrar el flujo hasta el broker mientras se integra el consumidor de Pia.
 
