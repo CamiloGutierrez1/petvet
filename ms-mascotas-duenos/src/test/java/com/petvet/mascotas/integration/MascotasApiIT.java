@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.petvet.mascotas.domain.ConflictoException;
 import com.petvet.mascotas.domain.Dueno;
 import com.petvet.mascotas.domain.RegistroDuenos;
@@ -57,7 +58,7 @@ class MascotasApiIT {
     private static final String PESO_INVALIDO = "El peso admite hasta 4 enteros y 3 decimales, por ejemplo 31.5 o 0.035.";
     private static final Map<Integer, String> CODIGOS = Map.of(
             400, "DATOS_INVALIDOS", 404, "RECURSO_NO_ENCONTRADO", 405, "METODO_NO_PERMITIDO",
-            409, "CONFLICTO", 415, "CONTENIDO_NO_SOPORTADO");
+            406, "RESPUESTA_NO_ACEPTABLE", 409, "CONFLICTO", 415, "CONTENIDO_NO_SOPORTADO");
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
@@ -443,6 +444,19 @@ class MascotasApiIT {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM duenos", Long.class)).isEqualTo(2);
     }
 
+    @Test
+    void losErroresSalenEnJsonAunqueElAcceptPidaOtroFormato() throws Exception {
+        // Si el error se negociara con el Accept, el 404 terminaría en un 500 con la página Whitelabel.
+        assertError(consultarAceptando("/api/mascotas/999", "text/html"), 404, "No existe la mascota 999");
+        assertError(consultarAceptando("/api/mascotas/1/foto", "text/html"), 404,
+                "No hay una foto subida para la mascota 1");
+        assertError(consultarAceptando("/api/mascotas/1/foto", "image/*"), 404,
+                "No hay una foto subida para la mascota 1");
+        // El 406 trae el cuerpo de error que documenta el contrato, no una respuesta vacía.
+        assertError(consultarAceptando("/api/mascotas/1", "application/xml"), 406,
+                "Solicite la respuesta como application/json.");
+    }
+
     private static Map<String, Object> mascota(String nombre, String especie, LocalDate fechaNacimiento, String peso) {
         return Map.of("nombre", nombre, "especie", especie, "raza", "Criollo",
                 "fechaNacimiento", fechaNacimiento.toString(), "peso", new BigDecimal(peso));
@@ -505,12 +519,19 @@ class MascotasApiIT {
 
     private Respuesta enviar(HttpRequest.Builder request) throws Exception {
         var response = http.send(request.timeout(Duration.ofSeconds(20)).build(), HttpResponse.BodyHandlers.ofString());
-        return new Respuesta(response.statusCode(), response.body(), objectMapper.readTree(response.body()),
-                response.headers());
+        // Solo se lee como JSON lo que llega como JSON: una página HTML o un cuerpo vacío fallan en la aserción.
+        boolean esJson = response.headers().firstValue("Content-Type").orElse("").contains("json");
+        return new Respuesta(response.statusCode(), response.body(),
+                esJson ? objectMapper.readTree(response.body()) : MissingNode.getInstance(), response.headers());
+    }
+
+    private Respuesta consultarAceptando(String ruta, String accept) throws Exception {
+        return enviar(HttpRequest.newBuilder(uri(ruta)).header("Accept", accept).GET());
     }
 
     private void assertError(Respuesta respuesta, int estado, String detalle) {
         assertThat(respuesta.estado()).isEqualTo(estado);
+        assertThat(respuesta.cabeceras().firstValue("Content-Type").orElse("")).startsWith("application/json");
         assertThat(respuesta.cuerpo().size()).isEqualTo(2);
         assertThat(respuesta.cuerpo().path("error").asText()).isEqualTo(CODIGOS.get(estado));
         assertThat(respuesta.cuerpo().path("detalle").asText()).isEqualTo(detalle);

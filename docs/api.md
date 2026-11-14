@@ -93,7 +93,7 @@ Cuerpo `DatosMascota` de `POST /api/duenos/{id}/mascotas` y de `PUT /api/mascota
 
 #### Errores de Mascotas y Dueños
 
-Los errores tienen el mismo cuerpo que en Citas, `{"error": "...", "detalle": "..."}`, con el detalle en español.
+Los errores tienen el mismo cuerpo que en Citas, `{"error": "...", "detalle": "..."}`, con el detalle en español. Siempre se responden como `application/json`, aunque la cabecera `Accept` pida otro formato.
 
 | HTTP | Código | Cuándo ocurre |
 | --- | --- | --- |

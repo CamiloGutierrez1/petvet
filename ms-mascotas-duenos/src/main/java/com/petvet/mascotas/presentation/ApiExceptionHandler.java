@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -122,8 +123,10 @@ public class ApiExceptionHandler {
         return respuesta(406, "RESPUESTA_NO_ACEPTABLE", "Solicite la respuesta como application/json.");
     }
 
+    // El tipo fijo evita negociar el error con el Accept: con text/html o image/* el 404 terminaba en un 500
+    // con la página Whitelabel, y el 406 salía sin cuerpo.
     private ResponseEntity<ErrorApi> respuesta(int status, String error, String detalle) {
-        return ResponseEntity.status(status).body(new ErrorApi(error, detalle));
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(new ErrorApi(error, detalle));
     }
 
     public record ErrorApi(String error, String detalle) { }
