@@ -47,13 +47,14 @@ def ficha(id_mascota, nombre, especie, nacimiento, dueno):
 def mascotas_demo():
     # 1, 2 y 3 son las mascotas de frontend/src/mocks/mascotas.json. Su historial de ejemplo está en
     # ms-citas-historial/src/main/resources/db/demo/R__historial_demo.sql.
-    # 4 es un cachorro cuya primera vacuna vence en los próximos días, para mostrar vacuna.proxima.
+    # 99 es Max, un cachorro cuya primera vacuna vence en los próximos días, para mostrar vacuna.proxima.
+    # Usa un id alto para no confundirse con las mascotas que el front registra desde el id 4.
     hoy = datetime.now(BOGOTA).date()
     fichas = (
         ficha(1, "Tobby", "PERRO", date(2021, 4, 18), LAURA),
         ficha(2, "Misha", "GATO", date(2023, 9, 2), LAURA),
         ficha(3, "Kiwi", "AVE", date(2024, 2, 11), SANTIAGO),
-        ficha(4, "Max", "PERRO", nacimiento_cachorro(hoy), SANTIAGO),
+        ficha(99, "Max", "PERRO", nacimiento_cachorro(hoy), SANTIAGO),
     )
     return {mascota["id"]: mascota for mascota in fichas}
 
