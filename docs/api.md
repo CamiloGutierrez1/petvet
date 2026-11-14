@@ -1,6 +1,6 @@
 # Contratos de API y eventos de PetVet
 
-Este documento reúne el contrato local de Citas e Historial y las rutas de Mascotas y Dueños previstas en las páginas 5 a 9 del plan general. El equipo debe ratificar los contratos antes de conectar el frontend y los consumidores.
+Este documento reúne los contratos de los tres servicios del backend, Mascotas y Dueños, Citas e Historial y Notificaciones, y los eventos que los conectan por RabbitMQ. Un cambio de contrato se avisa al equipo antes del merge; los tipos que usa el frontend están en `frontend/src/api/types.ts`.
 
 ## Servicios y puertos
 
@@ -9,15 +9,15 @@ Los puertos de la tabla corresponden al acceso desde la máquina local.
 | Servicio | Puertos | Base de datos | Responsable |
 | --- | --- | --- | --- |
 | `frontend` | `5173` | — | Camilo y Andrés Daza |
-| `ms-mascotas-duenos` | `8081` | `postgres-mascotas` en `5433` | Pia |
+| `ms-mascotas-duenos` | `8081` | `postgres-mascotas` en `5433` | Jersson |
 | `ms-citas-historial` | `8082` | `postgres-citas` en `5434` | Jersson |
-| `ms-notificaciones` | `8083` | `postgres-notificaciones` en `5435` | Pia |
+| `ms-notificaciones` | `8083` | `postgres-notificaciones` en `5435` | Jersson |
 | RabbitMQ | AMQP `5672`, panel `15672` | — | Jersson |
 | MailHog | SMTP `1025`, bandeja `8025` | — | Jersson |
 
 ## Rutas disponibles en el arranque local
 
-Citas e Historial expone estas rutas técnicas en el puerto `8082`.
+Los tres servicios exponen estas rutas técnicas, cada uno en su puerto: Mascotas y Dueños en `8081`, Citas e Historial en `8082` y Notificaciones en `8083`.
 
 | Método y ruta | Uso |
 | --- | --- |
@@ -29,7 +29,7 @@ El origen permitido por defecto es `http://localhost:5173`.
 
 ## API REST
 
-El plan prevé un selector de perfil de dueño o veterinario en el frontend, que conserva el identificador elegido y funciona sin inicio de sesión.
+El frontend no tiene inicio de sesión. En la entrada se elige el perfil: el dueño se identifica con su correo, que se busca en `GET /api/duenos`, y el veterinario se elige de la lista. El navegador conserva el identificador elegido.
 
 ### Mascotas y Dueños implementado
 
@@ -167,7 +167,7 @@ Respuesta `201` de ese registro para el dueño `3`, en una base recién creada.
 - Las vacunas que calcula Citas son `Polivalente` (perros), `Triple felina` (gatos) y `Rabia`. Para que una vacuna aplicada cuente en el cálculo, la consulta debe registrarla con ese mismo nombre; no importan las mayúsculas.
 - Las fechas de calendario usan ISO, por ejemplo `2026-11-20`. Las fechas con hora de negocio usan ISO local sin desplazamiento, por ejemplo `2026-11-20T09:30:00`, en `America/Bogota` por defecto. Se admiten los años 1 a 9999.
 - Tipos de servicio `CONSULTA_GENERAL`, `VACUNACION`, `CONTROL` y `ESPECIALISTA`. Tipos de consulta `GENERAL` y `ESPECIALISTA`. Estados de cita `AGENDADA`, `COMPLETADA` y `CANCELADA`.
-- Cada veterinario atiende todos los días de `horaInicio` a `horaFin`, en formato `HH:mm`. Los turnos duran 30 minutos por defecto (`PETVET_AGENDA_DURACION_MINUTOS`) y se cuentan desde `horaInicio`. Una cita debe empezar en uno de esos turnos y terminar a más tardar en `horaFin`; si no, la respuesta es `400` con la franja del veterinario en el detalle, por ejemplo `La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00`. Al agendar, un veterinario inexistente responde `404` antes de revisar la hora. `PETVET_AGENDA_APERTURA` y `PETVET_AGENDA_CIERRE` solo se aplican a un veterinario sin horario propio.
+- Cada veterinario atiende todos los días de `horaInicio` a `horaFin`, en formato `HH:mm`. Los turnos duran 30 minutos por defecto (`PETVET_AGENDA_DURACION_MINUTOS`) y se cuentan desde `horaInicio`. Una cita debe empezar en uno de esos turnos y terminar a más tardar en `horaFin`; si no, la respuesta es `400` con la franja del veterinario en el detalle, por ejemplo `La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00`. Al agendar, un veterinario inexistente responde `404` antes de revisar la hora. El horario de cada veterinario está en la tabla `veterinarios` (migración V7). `PETVET_AGENDA_APERTURA` y `PETVET_AGENDA_CIERRE` solo son el respaldo de un veterinario sin horario propio, que hoy no puede existir porque `hora_inicio` y `hora_fin` son obligatorias.
 - La consulta exige diagnóstico. Vacunas aplicadas, tratamientos, exámenes, cirugías, observaciones y próximo control son opcionales. El próximo control debe caer en la fecha de la consulta o después.
 - Cada lista de la consulta admite hasta 50 textos no vacíos: hasta 200 caracteres por vacuna y hasta 1000 por tratamiento, examen o cirugía. Una lista que no se envía se guarda vacía. Las cirugías son una lista del historial, como los tratamientos, y no un tipo de servicio ni de consulta.
 
@@ -266,7 +266,7 @@ Citas implementa la publicación en el exchange durable `petvet.events` de tipo 
 
 En `cita.completada`, `vacunasAplicadas` es un arreglo de textos, `proximasVacunas` un arreglo de objetos `VacunaPendiente` y `proximoControl` una fecha de calendario o nulo. `examenes` es un arreglo con los nombres de los exámenes registrados en la consulta, vacío si no se registró ninguno; con él Notificaciones arma el aviso de exámenes sin un evento aparte. Los tres eventos traen `duenoNombre`, el nombre del dueño según la ficha de Mascotas y Dueños, para que el correo lo salude por su nombre. `examenes` y `duenoNombre` en `cita.completada`, y `duenoNombre` en `vacuna.proxima`, son campos nuevos: un mensaje que ya estaba en la outbox se publica tal como se guardó, sin ellos, así que el consumidor debe tomar `examenes` como lista vacía y `duenoNombre` como ausente. El campo numérico `mascotaId` de `vacuna.proxima` es una extensión local del plan.
 
-Notificaciones debe enlazar `notificaciones.citas` con `cita.*` y `notificaciones.vacunas` con `vacuna.*`. Cada mensaje persistente tiene el cuerpo JSON en UTF-8 y un UUID estable en la propiedad AMQP `messageId`. La entrega es al menos una vez y el consumidor debe deduplicar por esa propiedad. Si RabbitMQ no está disponible o no hay cola enlazada, el evento queda pendiente en PostgreSQL para reintento.
+Notificaciones enlaza `notificaciones.citas` con `cita.*` y `notificaciones.vacunas` con `vacuna.*`, como detalla [Colas y enlaces](#colas-y-enlaces). Cada mensaje persistente tiene el cuerpo JSON en UTF-8 y un UUID estable en la propiedad AMQP `messageId`. La entrega es al menos una vez y Notificaciones deduplica por esa propiedad. Si RabbitMQ no está disponible o no hay cola enlazada, el evento queda pendiente en PostgreSQL para reintento.
 
 ## Notificaciones
 
@@ -286,7 +286,7 @@ Las cuatro colas son durables. `petvet.notificaciones.dlx` es un exchange `direc
 ### Procesamiento de los mensajes
 
 - Cada cola tiene un solo listener. El listener recibe el mensaje sin convertir y elige el caso de uso por la routing key: `cita.agendada`, `cita.completada` o `vacuna.proxima`. Si el mensaje se reenvió desde una DLQ, usa la propiedad `type`, que Citas llena con la misma clave.
-- El cuerpo se lee como JSON y se ignoran los campos desconocidos. `examenes` en `cita.completada` es opcional y, si llega, se lista en el resumen. `duenoNombre` es opcional en `cita.completada` y `vacuna.proxima`. Cuando el evento lo trae, el correo saluda por nombre.
+- El cuerpo se lee como JSON y se ignoran los campos desconocidos. `examenes` en `cita.completada` es opcional y, si llega, se lista en el resumen. `duenoNombre` es opcional en los tres eventos. Cuando el evento lo trae, el correo saluda por nombre.
 - Una clave que no genera notificación, como `cita.cancelada`, se registra en el log y se descarta.
 - Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos. Lo mismo pasa si el correo del dueño no es una dirección válida, como `laura,mendez@correo.com`, porque fallaría igual en cada intento.
 - Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces en total, con esperas de 1 s, 2 s, 4 s y 8 s. Así, un reinicio de MailHog de hasta unos 15 s no deja correos sin enviar. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
@@ -328,6 +328,8 @@ Los correos son texto plano en UTF-8. El remitente por defecto es `PetVet <notif
 | `cita.completada` | `Resumen de la consulta de {mascota}` |
 | `vacuna.proxima` | `Recordatorio: vacuna {vacuna} de {mascota}` |
 
+Los tres correos saludan al dueño por su nombre, porque Citas publica `duenoNombre` en los tres eventos. Un evento sin ese campo, como uno que ya estaba en la outbox antes de que Citas lo agregara, recibe el saludo `Hola:`.
+
 Ejemplo de `cita.agendada` con datos sintéticos.
 
 ```text
@@ -343,7 +345,7 @@ Equipo PetVet
 Ejemplo de `cita.completada` con exámenes. Sin exámenes, la línea de exámenes no aparece. Si faltan datos, el correo dice `Vacunas aplicadas: ninguna`, `Próximo control: sin control programado` o `Próximas vacunas: ninguna pendiente`.
 
 ```text
-Hola:
+Hola, Laura Méndez:
 
 Este es el resumen de la consulta de Tobby.
 
@@ -359,10 +361,10 @@ Próximas vacunas:
 Equipo PetVet
 ```
 
-Ejemplo de `vacuna.proxima`. Si la fecha límite es hoy, la frase dice `vence hoy, ...`, y si ya pasó, `venció el ...`.
+Ejemplo de `vacuna.proxima` para Max, el cachorro que registra `scripts/probar_citas.py` a nombre de Mariana Peña. Si la fecha límite es hoy, la frase dice `vence hoy, ...`, y si ya pasó, `venció el ...`.
 
 ```text
-Hola:
+Hola, Mariana Peña:
 
 La vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.
 
@@ -385,12 +387,12 @@ Ejemplo de respuesta de `GET /api/notificaciones?limite=1`.
 ```json
 [
   {
-    "id": 2,
+    "id": 3,
     "messageId": "6b1f3c2e-9d7a-4f0e-8c55-0a4b2d9e7f13",
     "tipo": "VACUNA_PROXIMA",
-    "destino": "santiago.rojas@correo.com",
+    "destino": "demo.citas.3f9a1c2b@example.test",
     "asunto": "Recordatorio: vacuna Polivalente de Max",
-    "cuerpo": "Hola:\n\nLa vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.\n\nPuede agendar la cita de vacunación en PetVet.\n\nEquipo PetVet\n",
+    "cuerpo": "Hola, Mariana Peña:\n\nLa vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.\n\nPuede agendar la cita de vacunación en PetVet.\n\nEquipo PetVet\n",
     "creadaEn": "2026-11-13T17:00:00.412318Z",
     "enviadaEn": "2026-11-13T17:00:00.415027Z"
   }
