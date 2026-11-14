@@ -69,7 +69,7 @@ Cuerpo `DatosMascota` de `POST /api/duenos/{id}/mascotas` y de `PUT /api/mascota
 | `especie` | texto | Sí | `PERRO`, `GATO`, `AVE` u `OTRO`. |
 | `raza` | texto | Sí | Hasta 60 caracteres. |
 | `fechaNacimiento` | fecha de calendario | Sí | ISO, por ejemplo `2021-04-18`. No puede ser futura en `America/Bogota` ni anterior a `1900-01-01`. |
-| `peso` | número | Sí | Kilogramos, mayor que 0, con hasta 4 enteros y 2 decimales, por ejemplo `31.5` o `0.04`. |
+| `peso` | número | Sí | Kilogramos, mayor que 0, con hasta 4 enteros y 3 decimales, por ejemplo `31.5` o `0.035`. |
 
 | Objeto de respuesta | Campos |
 | --- | --- |

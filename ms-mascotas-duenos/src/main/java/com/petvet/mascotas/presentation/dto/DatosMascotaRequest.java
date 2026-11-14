@@ -11,8 +11,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Cuerpo de POST /api/duenos/{id}/mascotas y de PUT /api/mascotas/{id}. El peso cabe en NUMERIC(6,2)
- * sin redondear: así 0.004 no se guarda como 0 ni 0.035 como 0.04.
+ * Cuerpo de POST /api/duenos/{id}/mascotas y de PUT /api/mascotas/{id}. El peso cabe en NUMERIC(7,3)
+ * sin redondear: admite gramos, como los 0.035 kg de un periquito, y así 0.0004 no se guarda como 0.
  */
 public record DatosMascotaRequest(
         @NotBlank(message = "El nombre de la mascota es obligatorio.")
@@ -26,9 +26,9 @@ public record DatosMascotaRequest(
         @NotNull(message = "La fecha de nacimiento es obligatoria.")
         LocalDate fechaNacimiento,
         @NotNull(message = "El peso es obligatorio.")
-        @DecimalMin(value = "0.01", message = "El peso debe ser mayor que 0.")
-        @Digits(integer = 4, fraction = 2,
-                message = "El peso admite hasta 4 enteros y 2 decimales, por ejemplo 31.5 o 0.04.")
+        @DecimalMin(value = "0", inclusive = false, message = "El peso debe ser mayor que 0.")
+        @Digits(integer = 4, fraction = 3,
+                message = "El peso admite hasta 4 enteros y 3 decimales, por ejemplo 31.5 o 0.035.")
         BigDecimal peso) {
 
     public DatosMascota aDatos() {

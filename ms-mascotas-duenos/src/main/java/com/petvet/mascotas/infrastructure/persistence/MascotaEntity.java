@@ -37,8 +37,8 @@ public class MascotaEntity {
     @Column(name = "fecha_nacimiento", nullable = false)
     private LocalDate fechaNacimiento;
 
-    // BigDecimal para NUMERIC(6,2): con Double, ddl-auto validate rechazaría la columna.
-    @Column(nullable = false, precision = 6, scale = 2)
+    // BigDecimal para NUMERIC(7,3): con Double, ddl-auto validate rechazaría la columna.
+    @Column(nullable = false, precision = 7, scale = 3)
     private BigDecimal peso;
 
     // Foto de ejemplo, relativa al front. Nunca guarda la URL de una foto subida.

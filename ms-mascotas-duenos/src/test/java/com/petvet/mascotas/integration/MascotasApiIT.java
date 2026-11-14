@@ -52,6 +52,7 @@ class MascotasApiIT {
     private static final String CORREO_REPETIDO = "Ya existe un dueño registrado con ese correo.";
     private static final String NO_ES_IMAGEN = "La foto debe ser una imagen JPG, PNG o WebP.";
     private static final String ID_INVALIDO = "El identificador de la ruta debe ser un número entero positivo.";
+    private static final String PESO_INVALIDO = "El peso admite hasta 4 enteros y 3 decimales, por ejemplo 31.5 o 0.035.";
     private static final Map<Integer, String> CODIGOS = Map.of(
             400, "DATOS_INVALIDOS", 404, "RECURSO_NO_ENCONTRADO", 405, "METODO_NO_PERMITIDO",
             409, "CONFLICTO", 415, "CONTENIDO_NO_SOPORTADO");
@@ -185,8 +186,8 @@ class MascotasApiIT {
                 "La fecha de nacimiento no puede ser futura.");
         assertError(consultar("POST", "/api/duenos/99/mascotas", mascota("Sol", "GATO", hoy, "3")), 404,
                 "No existe el dueño 99");
-        assertError(consultar("POST", "/api/duenos/2/mascotas", mascota("Sol", "AVE", hoy, "0.035")), 400,
-                "El peso admite hasta 4 enteros y 2 decimales, por ejemplo 31.5 o 0.04.");
+        assertError(consultar("POST", "/api/duenos/2/mascotas", mascota("Sol", "AVE", hoy, "0.0355")), 400,
+                PESO_INVALIDO);
         assertError(consultar("POST", "/api/duenos/2/mascotas", mascota("Sol", "AVE", hoy, "0")), 400,
                 "El peso debe ser mayor que 0.");
         assertError(consultar("POST", "/api/duenos/2/mascotas", mascota("Sol", "DINOSAURIO", hoy, "3")), 400,
@@ -200,6 +201,36 @@ class MascotasApiIT {
         var deSantiago = consultar("GET", "/api/duenos/2/mascotas", null);
         assertThat(deSantiago.cuerpo().findValuesAsText("nombre")).containsExactly("Kiwi", "Luna");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM mascotas", Long.class)).isEqualTo(4);
+    }
+
+    @Test
+    void guardaElPesoConTresDecimalesSinRedondearlo() throws Exception {
+        LocalDate nacimiento = LocalDate.of(2025, 3, 1);
+        // Un periquito de 35 g, como lo envía el formulario del front.
+        var pio = consultar("POST", "/api/duenos/2/mascotas", mascota("Pío", "AVE", nacimiento, "0.035"));
+        assertThat(pio.estado()).isEqualTo(201);
+        assertThat(pio.texto()).contains("\"peso\":0.035,");
+        // La respuesta del POST sale del cuerpo enviado; el GET relee la base, que no debe redondear a 0.04.
+        assertThat(consultar("GET", "/api/mascotas/4", null).texto()).contains("\"peso\":0.035,");
+        assertThat(jdbc.queryForObject("SELECT peso FROM mascotas WHERE id = 4", BigDecimal.class))
+                .isEqualByComparingTo("0.035");
+
+        var editada = consultar("PUT", "/api/mascotas/4", mascota("Pío", "AVE", nacimiento, "0.005"));
+        assertThat(editada.estado()).isEqualTo(200);
+        assertThat(consultar("GET", "/api/mascotas/4", null).texto()).contains("\"peso\":0.005,");
+
+        // Con un cuarto decimal el peso sigue siendo mayor que 0: solo se informa el límite de decimales.
+        assertError(consultar("PUT", "/api/mascotas/4", mascota("Pío", "AVE", nacimiento, "0.0005")), 400,
+                PESO_INVALIDO);
+        assertError(consultar("PUT", "/api/mascotas/4", mascota("Pío", "AVE", nacimiento, "10000")), 400,
+                PESO_INVALIDO);
+        assertError(consultar("PUT", "/api/mascotas/4", mascota("Pío", "AVE", nacimiento, "-0.005")), 400,
+                "El peso debe ser mayor que 0.");
+
+        // Los datos de ejemplo conservan el peso de los mocks del front, sin ceros sobrantes.
+        assertThat(consultar("GET", "/api/mascotas/1", null).texto()).contains("\"peso\":31.5,");
+        assertThat(consultar("GET", "/api/mascotas/2", null).texto()).contains("\"peso\":4.2,");
+        assertThat(consultar("GET", "/api/mascotas/3", null).texto()).contains("\"peso\":0.04,");
     }
 
     @Test

@@ -14,7 +14,7 @@ public record MascotaResponse(Long id, String nombre, Especie especie, String ra
                 mascota.fechaNacimiento(), sinCerosSobrantes(mascota.peso()), mascota.fotoUrl(), mascota.duenoId());
     }
 
-    /** NUMERIC(6,2) devuelve 31.50; la API responde 31.5, como los datos de ejemplo del front, y 100 en vez de 1E+2. */
+    /** NUMERIC(7,3) devuelve 31.500; la API responde 31.5, como los datos de ejemplo del front, y 100 en vez de 1E+2. */
     static BigDecimal sinCerosSobrantes(BigDecimal peso) {
         if (peso == null) {
             return null;
