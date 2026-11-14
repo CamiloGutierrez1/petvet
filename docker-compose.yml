@@ -113,6 +113,31 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  ms-notificaciones:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ms-notificaciones/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notificaciones:5432/notificaciones
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:-petvet}
+      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+      PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:8083:8083"
+    depends_on:
+      postgres-notificaciones:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
   frontend:
     profiles: [app]
     build:

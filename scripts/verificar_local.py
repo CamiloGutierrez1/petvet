@@ -14,6 +14,7 @@ import urllib.request
 # Cada servicio que se sume al perfil app se agrega aquí con su puerto.
 SERVICIOS = {
     "ms-citas-historial": 8082,
+    "ms-notificaciones": 8083,
 }
 ORIGEN = os.environ.get("PETVET_CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0]
 
