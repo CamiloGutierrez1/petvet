@@ -181,7 +181,7 @@ Las cuatro colas son durables. `petvet.notificaciones.dlx` es un exchange `direc
 - Cada cola tiene un solo listener. El listener recibe el mensaje sin convertir y elige el caso de uso por la routing key: `cita.agendada`, `cita.completada` o `vacuna.proxima`. Si el mensaje se reenvió desde una DLQ, usa la propiedad `type`, que Citas llena con la misma clave.
 - El cuerpo se lee como JSON y se ignoran los campos desconocidos. `examenes` en `cita.completada` es opcional y, si llega, se lista en el resumen. `duenoNombre` es opcional en `cita.completada` y `vacuna.proxima`. Cuando el evento lo trae, el correo saluda por nombre.
 - Una clave que no genera notificación, como `cita.cancelada`, se registra en el log y se descarta.
-- Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos.
+- Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos. Lo mismo pasa si el correo del dueño no es una dirección válida, como `laura,mendez@correo.com`, porque fallaría igual en cada intento.
 - Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces en total, con esperas de 1 s, 2 s, 4 s y 8 s. Así, un reinicio de MailHog de hasta unos 15 s no deja correos sin enviar. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
 - Los mensajes de una DLQ se reprocesan cuando se corrige la causa, como se explica en la sección siguiente.
 

@@ -28,7 +28,8 @@ spring:
         default-requeue-rejected: false
         # Fallas pasajeras (SMTP o base caídos): 5 intentos, con esperas de 1, 2, 4 y 8 s, así que un
         # reinicio de MailHog de hasta unos 15 s no deja correos en la DLQ.
-        # Los mensajes sin messageId o con JSON inválido no se reintentan (PoliticaReintentos).
+        # Los mensajes sin messageId, con JSON inválido o con un destino mal escrito no se reintentan
+        # (PoliticaReintentos).
         retry:
           enabled: true
           max-attempts: 5

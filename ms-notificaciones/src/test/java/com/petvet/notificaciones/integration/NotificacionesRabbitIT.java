@@ -258,6 +258,21 @@ class NotificacionesRabbitIT {
         assertThat(contarFilas()).isZero();
     }
 
+    /** Pasa la validación de correo de Mascotas y de Citas, pero falla igual en cada intento. */
+    @Test
+    void unaDireccionDeDestinoInvalidaPasaALaDlqSinReintentosNiCorreo() throws Exception {
+        String messageId = publicar("cita.agendada",
+                citaAgendada(13, "laura,mendez@correo.com", hoy.plusDays(3).atTime(8, 30)));
+
+        await().atMost(ESPERA).until(() -> contarMensajes(DLQ_CITAS) == 1);
+        verify(enviador, times(1)).enviar(eq("laura,mendez@correo.com"), anyString(), anyString());
+        assertThat(contarFilas()).isZero();
+        assertThat(SMTP.getReceivedMessages()).isEmpty();
+        Message rechazado = rabbit.receive(DLQ_CITAS, 5_000);
+        assertThat(rechazado).isNotNull();
+        assertThat(rechazado.getMessageProperties().getMessageId()).isEqualTo(messageId);
+    }
+
     @Test
     void siElSmtpFallaReintentaCincoVecesYElMensajeQuedaEnLaDlqParaReprocesarlo() throws Exception {
         doThrow(new EnvioNoDisponibleException("SMTP caído", null))

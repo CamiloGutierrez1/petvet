@@ -9,6 +9,7 @@ public interface EnviadorNotificaciones {
      * Entrega el mensaje al destino.
      *
      * @throws EnvioNoDisponibleException si el canal no acepta el mensaje
+     * @throws DestinoInvalidoException si el destino no es una dirección que el canal pueda usar
      */
     void enviar(String destino, String asunto, String cuerpo);
 }

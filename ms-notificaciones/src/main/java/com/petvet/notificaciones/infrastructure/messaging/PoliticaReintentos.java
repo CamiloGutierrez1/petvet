@@ -1,5 +1,6 @@
 package com.petvet.notificaciones.infrastructure.messaging;
 
+import com.petvet.notificaciones.domain.DestinoInvalidoException;
 import java.util.Map;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
@@ -11,8 +12,8 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 /**
  * Los reintentos del listener (spring.rabbitmq.listener.simple.retry) cubren fallas pasajeras, como
  * el SMTP o la base caídos; al agotarse, el mensaje va a la DLQ. Spring Boot reintenta cualquier
- * excepción, pero un mensaje sin messageId o con JSON inválido falla igual cada vez, así que esos
- * van directo a la DLQ.
+ * excepción, pero un mensaje sin messageId, con JSON inválido o con una dirección de destino mal
+ * escrita falla igual cada vez, así que esos van directo a la DLQ.
  */
 @Configuration
 public class PoliticaReintentos {
@@ -29,6 +30,8 @@ public class PoliticaReintentos {
 
     /** Revisa toda la cadena de causas, porque el contenedor envuelve la excepción del listener. */
     static SimpleRetryPolicy politica(int intentos) {
-        return new SimpleRetryPolicy(intentos, Map.of(AmqpRejectAndDontRequeueException.class, false), true, true);
+        return new SimpleRetryPolicy(intentos, Map.of(
+                AmqpRejectAndDontRequeueException.class, false,
+                DestinoInvalidoException.class, false), true, true);
     }
 }

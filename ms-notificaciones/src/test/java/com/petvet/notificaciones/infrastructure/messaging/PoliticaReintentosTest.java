@@ -3,7 +3,9 @@ package com.petvet.notificaciones.infrastructure.messaging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.petvet.notificaciones.domain.DestinoInvalidoException;
 import com.petvet.notificaciones.domain.EnvioNoDisponibleException;
+import jakarta.mail.internet.AddressException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -45,6 +47,22 @@ class PoliticaReintentosTest {
             intentos.incrementAndGet();
             throw new ListenerExecutionFailedException("Falló el listener",
                     new AmqpRejectAndDontRequeueException("El cuerpo no corresponde a CitaAgendada"), MENSAJE);
+        })).isInstanceOf(ListenerExecutionFailedException.class);
+
+        assertThat(intentos).hasValue(1);
+        assertThat(esperas).isEmpty();
+    }
+
+    @Test
+    void unaDireccionDeDestinoInvalidaVaDirectoALaDlqSinReintentos() {
+        RetryTemplate plantilla = plantillaDelListener();
+        AtomicInteger intentos = new AtomicInteger();
+
+        assertThatThrownBy(() -> plantilla.execute(contexto -> {
+            intentos.incrementAndGet();
+            throw new ListenerExecutionFailedException("Falló el listener", new DestinoInvalidoException(
+                    "La dirección de destino no es válida",
+                    new AddressException("Illegal address", "laura,mendez@correo.com")), MENSAJE);
         })).isInstanceOf(ListenerExecutionFailedException.class);
 
         assertThat(intentos).hasValue(1);

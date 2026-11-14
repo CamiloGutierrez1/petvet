@@ -4,13 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.petvet.notificaciones.domain.DestinoInvalidoException;
 import com.petvet.notificaciones.domain.EnvioNoDisponibleException;
 import jakarta.mail.Address;
 import jakarta.mail.Message;
 import jakarta.mail.Session;
+import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,5 +66,16 @@ class CorreoSmtpAdapterTest {
                 .isInstanceOf(EnvioNoDisponibleException.class)
                 .hasMessage("No fue posible enviar el correo por SMTP")
                 .hasCause(falla);
+    }
+
+    /** Pasa la validación de correo de Mascotas y de Citas, pero no es una sola dirección. */
+    @Test
+    void unaDireccionDeDestinoInvalidaEsUnErrorDefinitivoYNoSeEnvia() {
+        assertThatThrownBy(() -> adapter.enviar("laura,mendez@correo.com", "Asunto", CUERPO))
+                .isInstanceOf(DestinoInvalidoException.class)
+                .hasMessage("La dirección de destino no es válida")
+                .hasCauseInstanceOf(AddressException.class);
+
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 }
