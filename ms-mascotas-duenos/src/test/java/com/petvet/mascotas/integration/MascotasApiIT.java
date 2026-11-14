@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -49,6 +50,7 @@ class MascotasApiIT {
 
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
     private static final String URL_BASE_FOTOS = "http://mascotas.prueba";
+    private static final String ORIGEN_FRONT = "http://localhost:5173";
     private static final String CORREO_REPETIDO = "Ya existe un dueño registrado con ese correo.";
     private static final String NO_ES_IMAGEN = "La foto debe ser una imagen JPG, PNG o WebP.";
     private static final String ID_INVALIDO = "El identificador de la ruta debe ser un número entero positivo.";
@@ -308,6 +310,27 @@ class MascotasApiIT {
     }
 
     @Test
+    void laFotoDeMasDe5MBLlegaAlFrontComo400ConCorsYSinCortarLaConexion() throws Exception {
+        byte[] png = imagen("png");
+        // Sin CORS el navegador oculta el 400 y axios lo reporta como error de red. Con 7 MB también se pasa el
+        // límite de la solicitud (6 MB) y quedan más de 2 MB sin leer, lo que antes cortaba la conexión.
+        for (int tamano : List.of(5 * 1024 * 1024 + 1024, 7 * 1024 * 1024)) {
+            var rechazada = enviar(solicitudDeFoto(1, "foto", "image/png", Arrays.copyOf(png, tamano))
+                    .header("Origin", ORIGEN_FRONT));
+            assertError(rechazada, 400, "La foto pesa más de 5 MB.");
+            assertThat(rechazada.cabeceras().firstValue("Access-Control-Allow-Origin")).hasValue(ORIGEN_FRONT);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM fotos_mascotas", Long.class)).isZero();
+
+        var subida = enviar(solicitudDeFoto(1, "foto", "image/png", png).header("Origin", ORIGEN_FRONT));
+        assertThat(subida.estado()).isEqualTo(200);
+        assertThat(subida.cabeceras().firstValue("Access-Control-Allow-Origin")).hasValue(ORIGEN_FRONT);
+        assertThat(subida.cuerpo().path("fotoUrl").asText())
+                .matches("http://mascotas\\.prueba/api/mascotas/1/foto\\?v=\\d+");
+        assertThat(descargar(rutaDe(subida.cuerpo().path("fotoUrl").asText())).body()).isEqualTo(png);
+    }
+
+    @Test
     void subidasSimultaneasALaMismaMascotaSeAtiendenEnOrdenYCadaUnaCambiaLaUrl() throws Exception {
         byte[] png = imagen("png");
         byte[] jpg = imagen("jpg");
@@ -455,6 +478,10 @@ class MascotasApiIT {
     }
 
     private Respuesta subirFoto(long mascotaId, String campo, String tipo, byte[] contenido) throws Exception {
+        return enviar(solicitudDeFoto(mascotaId, campo, tipo, contenido));
+    }
+
+    private HttpRequest.Builder solicitudDeFoto(long mascotaId, String campo, String tipo, byte[] contenido) {
         String limite = "limite-petvet-" + System.nanoTime();
         var cuerpo = new ByteArrayOutputStream();
         cuerpo.writeBytes(("--" + limite + "\r\n"
@@ -462,9 +489,9 @@ class MascotasApiIT {
                 + "Content-Type: " + tipo + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         cuerpo.writeBytes(contenido);
         cuerpo.writeBytes(("\r\n--" + limite + "--\r\n").getBytes(StandardCharsets.UTF_8));
-        return enviar(HttpRequest.newBuilder(uri("/api/mascotas/" + mascotaId + "/foto"))
+        return HttpRequest.newBuilder(uri("/api/mascotas/" + mascotaId + "/foto"))
                 .header("Content-Type", "multipart/form-data; boundary=" + limite)
-                .POST(HttpRequest.BodyPublishers.ofByteArray(cuerpo.toByteArray())));
+                .POST(HttpRequest.BodyPublishers.ofByteArray(cuerpo.toByteArray()));
     }
 
     private HttpResponse<byte[]> descargar(String ruta) throws Exception {
@@ -479,7 +506,7 @@ class MascotasApiIT {
     private Respuesta enviar(HttpRequest.Builder request) throws Exception {
         var response = http.send(request.timeout(Duration.ofSeconds(20)).build(), HttpResponse.BodyHandlers.ofString());
         return new Respuesta(response.statusCode(), response.body(), objectMapper.readTree(response.body()),
-                response.headers().firstValue("Location").orElse(""));
+                response.headers());
     }
 
     private void assertError(Respuesta respuesta, int estado, String detalle) {
@@ -489,6 +516,9 @@ class MascotasApiIT {
         assertThat(respuesta.cuerpo().path("detalle").asText()).isEqualTo(detalle);
     }
 
-    private record Respuesta(int estado, String texto, JsonNode cuerpo, String ubicacion) {
+    private record Respuesta(int estado, String texto, JsonNode cuerpo, HttpHeaders cabeceras) {
+        String ubicacion() {
+            return cabeceras.firstValue("Location").orElse("");
+        }
     }
 }

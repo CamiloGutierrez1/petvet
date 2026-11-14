@@ -1,5 +1,9 @@
 server:
   port: 8081
+  tomcat:
+    # Lo que Tomcat lee y descarta de una subida rechazada antes de cerrar la respuesta. Con los 2 MB por defecto,
+    # una foto de 7 MB dejaba el 400 a medias y el cliente veía un error de red en vez del mensaje.
+    max-swallow-size: 25MB
 
 spring:
   application:
@@ -19,6 +23,9 @@ spring:
       # El front deja subir fotos de hasta 5 MB. El margen de la solicitud cubre los encabezados del formulario.
       max-file-size: 5MB
       max-request-size: 6MB
+      # El formulario se lee al resolver el parámetro foto, cuando ya se aplicó CORS: así el 400 de una foto
+      # de más de 5 MB llega al navegador con Access-Control-Allow-Origin y el front puede mostrarlo.
+      resolve-lazily: true
 
 management:
   endpoints:
