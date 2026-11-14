@@ -303,6 +303,10 @@ class CitasApiIT {
         assertThat(jdbc.queryForObject("SELECT estado FROM citas WHERE id = ?", String.class, id))
                 .isEqualTo("COMPLETADA");
         assertThat(contarEventos("cita.completada:" + id)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT payload ->> 'examenes' FROM outbox_eventos WHERE clave_deduplicacion = ?",
+                String.class, "cita.completada:" + id)).as("sin exámenes, el evento trae una lista vacía")
+                .isEqualTo("[]");
         assertError(consultar("POST", "/api/citas/" + id + "/consulta", datosConsulta()), 409);
         assertError(consultar("PATCH", "/api/citas/" + id + "/cancelar", null), 409);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial", Long.class)).isEqualTo(1);

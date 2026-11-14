@@ -184,6 +184,28 @@ class OutboxRabbitIT {
     }
 
     @Test
+    void elResumenDeLaConsultaLlevaLosExamenesHastaLaCola() throws Exception {
+        String cola = declararCola("cita.completada");
+        long citaId = agendar();
+        var consulta = enviar("POST", "/api/citas/" + citaId + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Otitis leve",
+                "examenes", List.of("Otoscopia", "Hemograma")));
+        assertThat(consulta.statusCode()).isEqualTo(201);
+
+        dispatcher.despachar();
+
+        GetResponse mensaje = leerMensaje(cola);
+        assertThat(mensaje).isNotNull();
+        assertThat(mensaje.getProps().getType()).isEqualTo("cita.completada");
+        JsonNode contenido = objectMapper.readTree(mensaje.getBody());
+        assertThat(contenido.path("citaId").asLong()).isEqualTo(citaId);
+        assertThat(contenido.path("diagnostico").asText()).isEqualTo("Otitis leve");
+        assertThat(contenido.path("examenes")).extracting(JsonNode::asText)
+                .containsExactly("Otoscopia", "Hemograma");
+        assertThat(leerMensaje(cola)).isNull();
+    }
+
+    @Test
     void recordatorioSeDeduplicaYPublicaLaFechaDeLaVacuna() throws Exception {
         LocalDate nacimiento = hoy.minusMonths(2).plusDays(3);
         LocalDate vencimiento = nacimiento.plusMonths(2);

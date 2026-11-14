@@ -4,6 +4,11 @@ import com.petvet.citas.domain.VacunaPendiente;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Resumen de la consulta para Notificaciones. {@code examenes} trae los nombres de los exámenes
+ * registrados en la consulta, o una lista vacía; con ellos se arma el aviso de exámenes, sin un
+ * evento aparte.
+ */
 public record CitaCompletadaEvento(
         long citaId,
         String mascotaNombre,
@@ -11,10 +16,12 @@ public record CitaCompletadaEvento(
         String diagnostico,
         List<String> vacunasAplicadas,
         LocalDate proximoControl,
-        List<VacunaPendiente> proximasVacunas) {
+        List<VacunaPendiente> proximasVacunas,
+        List<String> examenes) {
 
     public CitaCompletadaEvento {
         vacunasAplicadas = List.copyOf(vacunasAplicadas);
         proximasVacunas = List.copyOf(proximasVacunas);
+        examenes = List.copyOf(examenes);
     }
 }
