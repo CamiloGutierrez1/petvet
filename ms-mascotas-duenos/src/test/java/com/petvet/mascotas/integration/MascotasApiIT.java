@@ -8,21 +8,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petvet.mascotas.domain.ConflictoException;
 import com.petvet.mascotas.domain.Dueno;
 import com.petvet.mascotas.domain.RegistroDuenos;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import javax.imageio.ImageIO;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +48,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class MascotasApiIT {
 
     private static final ZoneId BOGOTA = ZoneId.of("America/Bogota");
+    private static final String URL_BASE_FOTOS = "http://mascotas.prueba";
     private static final String CORREO_REPETIDO = "Ya existe un dueño registrado con ese correo.";
+    private static final String NO_ES_IMAGEN = "La foto debe ser una imagen JPG, PNG o WebP.";
     private static final String ID_INVALIDO = "El identificador de la ruta debe ser un número entero positivo.";
     private static final Map<Integer, String> CODIGOS = Map.of(
             400, "DATOS_INVALIDOS", 404, "RECURSO_NO_ENCONTRADO", 405, "METODO_NO_PERMITIDO",
@@ -59,6 +66,8 @@ class MascotasApiIT {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         // Cada prueba vuelve a aplicar las migraciones: datos de ejemplo intactos e identidades en 3 y 4.
         registry.add("spring.flyway.clean-disabled", () -> false);
+        // Con barra final, para comprobar que la fotoUrl no queda con doble barra.
+        registry.add("petvet.fotos.url-base", () -> URL_BASE_FOTOS + "/");
     }
 
     @LocalServerPort
@@ -213,6 +222,93 @@ class MascotasApiIT {
     }
 
     @Test
+    void subirUnaFotoDevuelveLaUrlAbsolutaYElGetEntregaLosMismosBytes() throws Exception {
+        byte[] png = imagen("png");
+        var subida = subirFoto(3, "foto", "image/png", png);
+        assertThat(subida.estado()).isEqualTo(200);
+        String fotoUrl = subida.cuerpo().path("fotoUrl").asText();
+        assertThat(fotoUrl).matches("http://mascotas\\.prueba/api/mascotas/3/foto\\?v=\\d+");
+        assertThat(subida.cuerpo().path("nombre").asText()).isEqualTo("Kiwi");
+        assertThat(subida.cuerpo().path("duenoId").asLong()).isEqualTo(2);
+
+        var descarga = descargar(rutaDe(fotoUrl));
+        assertThat(descarga.statusCode()).isEqualTo(200);
+        assertThat(descarga.headers().firstValue("Content-Type")).hasValue("image/png");
+        assertThat(descarga.headers().firstValue("X-Content-Type-Options")).hasValue("nosniff");
+        assertThat(descarga.body()).isEqualTo(png);
+        assertThat(consultar("GET", "/api/mascotas/3", null).cuerpo().path("fotoUrl").asText()).isEqualTo(fotoUrl);
+
+        byte[] jpg = imagen("jpg");
+        var reemplazo = subirFoto(3, "foto", "image/jpeg", jpg);
+        assertThat(reemplazo.estado()).isEqualTo(200);
+        String nuevaUrl = reemplazo.cuerpo().path("fotoUrl").asText();
+        var nuevaDescarga = descargar(rutaDe(nuevaUrl));
+        assertThat(nuevaDescarga.headers().firstValue("Content-Type")).hasValue("image/jpeg");
+        assertThat(nuevaDescarga.body()).isEqualTo(jpg);
+
+        var editada = consultar("PUT", "/api/mascotas/3", mascota("Kiwi", "AVE", LocalDate.of(2024, 2, 11), "0.05"));
+        assertThat(editada.cuerpo().path("fotoUrl").asText()).isEqualTo(nuevaUrl);
+        assertThat(editada.cuerpo().path("duenoId").asLong()).isEqualTo(2);
+
+        // La base guarda bytes, tipo y versión; nunca la URL absoluta.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM mascotas WHERE foto_url LIKE 'http%'", Long.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT tipo_contenido FROM fotos_mascotas WHERE mascota_id = 3", String.class))
+                .isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void rechazaFotosQueNoSonImagenesPesanMasDe5MBONoVienenEnElCampoFoto() throws Exception {
+        byte[] png = imagen("png");
+        assertError(subirFoto(1, "foto", "text/plain", "hola".getBytes(StandardCharsets.UTF_8)), 400, NO_ES_IMAGEN);
+        assertError(subirFoto(1, "foto", "image/png", "no soy un png".getBytes(StandardCharsets.UTF_8)), 400,
+                NO_ES_IMAGEN);
+        assertError(subirFoto(1, "foto", "image/gif", png), 400, NO_ES_IMAGEN);
+        assertError(subirFoto(1, "imagen", "image/png", png), 400, "Adjunta la imagen en el campo foto del formulario.");
+        // Por encima del límite del archivo y por debajo del de la solicitud (6 MB).
+        assertError(subirFoto(1, "foto", "image/png", Arrays.copyOf(png, 5 * 1024 * 1024 + 1024)), 400,
+                "La foto pesa más de 5 MB.");
+        assertError(subirFoto(999, "foto", "image/png", png), 404, "No existe la mascota 999");
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM fotos_mascotas", Long.class)).isZero();
+        assertError(consultar("GET", "/api/mascotas/1/foto", null), 404, "No hay una foto subida para la mascota 1");
+        assertThat(consultar("GET", "/api/mascotas/1", null).cuerpo().path("fotoUrl").asText())
+                .isEqualTo("/mascotas/tobby.jpg");
+    }
+
+    @Test
+    void subidasSimultaneasALaMismaMascotaSeAtiendenEnOrdenYCadaUnaCambiaLaUrl() throws Exception {
+        byte[] png = imagen("png");
+        byte[] jpg = imagen("jpg");
+        var iniciar = new CountDownLatch(1);
+        List<Respuesta> respuestas = new ArrayList<>();
+        try (var ejecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<Respuesta>> envios = new ArrayList<>();
+            for (int intento = 0; intento < 4; intento++) {
+                boolean enPng = intento % 2 == 0;
+                Callable<Respuesta> envio = () -> {
+                    iniciar.await();
+                    return enPng ? subirFoto(2, "foto", "image/png", png) : subirFoto(2, "foto", "image/jpeg", jpg);
+                };
+                envios.add(ejecutor.submit(envio));
+            }
+            iniciar.countDown();
+            for (var envio : envios) {
+                respuestas.add(envio.get());
+            }
+        }
+
+        assertThat(respuestas).allSatisfy(respuesta -> assertThat(respuesta.estado()).isEqualTo(200));
+        assertThat(respuestas).extracting(respuesta -> respuesta.cuerpo().path("fotoUrl").asText())
+                .doesNotHaveDuplicates();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM fotos_mascotas WHERE mascota_id = 2", Long.class))
+                .isEqualTo(1);
+        var descarga = descargar(rutaDe(consultar("GET", "/api/mascotas/2", null).cuerpo().path("fotoUrl").asText()));
+        boolean quedoPng = descarga.headers().firstValue("Content-Type").orElseThrow().equals("image/png");
+        assertThat(descarga.body()).isEqualTo(quedoPng ? png : jpg);
+    }
+
+    @Test
     void listaLosDuenosYLasMascotasDeCadaUno() throws Exception {
         var duenos = consultar("GET", "/api/duenos", null);
         assertThat(duenos.estado()).isEqualTo(200);
@@ -279,22 +375,37 @@ class MascotasApiIT {
         var documentacion = consultar("GET", "/v3/api-docs", null);
         assertThat(documentacion.estado()).isEqualTo(200);
         assertThat(documentacion.cuerpo().path("info").path("title").asText()).contains("PetVet");
-        assertThat(documentacion.cuerpo().path("paths").has("/api/mascotas/{id}")).isTrue();
+        assertThat(documentacion.cuerpo().path("paths").has("/api/mascotas/{id}/foto")).isTrue();
     }
 
     @Test
     void metodosYTiposDeContenidoNoAdmitidosConservanSuEstadoHttp() throws Exception {
         assertError(consultar("DELETE", "/api/mascotas/1", null), 405, "El método HTTP no está disponible en esta ruta.");
-        String noSoportado = "Envíe los datos como application/json.";
+        String noSoportado = "Envíe los datos como application/json, o la foto como multipart/form-data.";
         assertError(enviar(HttpRequest.newBuilder(uri("/api/duenos"))
                 .header("Content-Type", "text/plain")
                 .POST(HttpRequest.BodyPublishers.ofString("contenido de texto"))), 415, noSoportado);
+        assertError(consultar("POST", "/api/mascotas/1/foto", Map.of("foto", "tobby.jpg")), 415, noSoportado);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM duenos", Long.class)).isEqualTo(2);
     }
 
     private static Map<String, Object> mascota(String nombre, String especie, LocalDate fechaNacimiento, String peso) {
         return Map.of("nombre", nombre, "especie", especie, "raza", "Criollo",
                 "fechaNacimiento", fechaNacimiento.toString(), "peso", new BigDecimal(peso));
+    }
+
+    private static byte[] imagen(String formato) throws Exception {
+        var imagen = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+        imagen.setRGB(3, 3, 0xF5A623);
+        var salida = new ByteArrayOutputStream();
+        assertThat(ImageIO.write(imagen, formato, salida)).isTrue();
+        return salida.toByteArray();
+    }
+
+    /** La fotoUrl apunta a la base configurada; la prueba pide la misma ruta al puerto aleatorio. */
+    private static String rutaDe(String fotoUrl) {
+        URI url = URI.create(fotoUrl);
+        return url.getRawPath() + "?" + url.getRawQuery();
     }
 
     private URI uri(String ruta) {
@@ -310,6 +421,28 @@ class MascotasApiIT {
         return enviar(HttpRequest.newBuilder(uri(ruta))
                 .header("Content-Type", "application/json")
                 .method(metodo, contenido));
+    }
+
+    private Respuesta subirFoto(long mascotaId, String campo, String tipo, byte[] contenido) throws Exception {
+        String limite = "limite-petvet-" + System.nanoTime();
+        var cuerpo = new ByteArrayOutputStream();
+        cuerpo.writeBytes(("--" + limite + "\r\n"
+                + "Content-Disposition: form-data; name=\"" + campo + "\"; filename=\"foto\"\r\n"
+                + "Content-Type: " + tipo + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        cuerpo.writeBytes(contenido);
+        cuerpo.writeBytes(("\r\n--" + limite + "--\r\n").getBytes(StandardCharsets.UTF_8));
+        return enviar(HttpRequest.newBuilder(uri("/api/mascotas/" + mascotaId + "/foto"))
+                .header("Content-Type", "multipart/form-data; boundary=" + limite)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(cuerpo.toByteArray())));
+    }
+
+    private HttpResponse<byte[]> descargar(String ruta) throws Exception {
+        return http.send(HttpRequest.newBuilder(uri(ruta))
+                .timeout(Duration.ofSeconds(10))
+                // El mismo Accept que envía el navegador al cargar una etiqueta img.
+                .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                .GET()
+                .build(), HttpResponse.BodyHandlers.ofByteArray());
     }
 
     private Respuesta enviar(HttpRequest.Builder request) throws Exception {

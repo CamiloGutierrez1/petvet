@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -82,6 +85,21 @@ public class ApiExceptionHandler {
         return respuesta(400, "DATOS_INVALIDOS", "El identificador de la ruta debe ser un número entero positivo.");
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorApi> fotoMuyPesada() {
+        return respuesta(400, "DATOS_INVALIDOS", "La foto pesa más de 5 MB.");
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorApi> sinFoto() {
+        return respuesta(400, "DATOS_INVALIDOS", "Adjunta la imagen en el campo foto del formulario.");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorApi> multipart() {
+        return respuesta(400, "DATOS_INVALIDOS", "Envía la foto como multipart/form-data en el campo foto.");
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorApi> inesperado(Exception error) {
         LOG.error("Falló una operación de Mascotas y Dueños", error);
@@ -95,7 +113,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ErrorApi> contenido() {
-        return respuesta(415, "CONTENIDO_NO_SOPORTADO", "Envíe los datos como application/json.");
+        return respuesta(415, "CONTENIDO_NO_SOPORTADO",
+                "Envíe los datos como application/json, o la foto como multipart/form-data.");
     }
 
     @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
