@@ -380,7 +380,9 @@ class CitasApiIT {
         assertError(consultar("GET", "/api/citas/0", null), 400);
         assertError(consultar("GET", "/api/citas?veterinarioId=0", null), 400);
         assertError(consultar("GET", "/api/veterinarios/1/disponibilidad?fecha=invalida", null), 400);
-        assertError(agendar(-1, 1, fecha.atTime(9, 0)), 400);
+        var mascotaNegativa = agendar(-1, 1, fecha.atTime(9, 0));
+        assertError(mascotaNegativa, 400);
+        assertThat(mascotaNegativa.cuerpo().path("detalle").asText()).isEqualTo("mascotaId debe ser mayor que cero");
         assertError(consultar("GET", "/api/citas?mascotaId=-5", null), 400);
         assertError(consultar("PATCH", "/api/citas/0/cancelar", null), 400);
         assertError(consultar("GET", "/api/mascotas/-1/historial", null), 400);
@@ -424,8 +426,10 @@ class CitasApiIT {
     @Test
     void diagnosticoVacioNoCompletaLaCita() throws Exception {
         long id = agendar(3, 1, fecha.atTime(14, 0)).cuerpo().path("id").asLong();
-        assertError(consultar("POST", "/api/citas/" + id + "/consulta",
-                Map.of("tipoConsulta", "GENERAL", "diagnostico", " ")), 400);
+        var sinDiagnostico = consultar("POST", "/api/citas/" + id + "/consulta",
+                Map.of("tipoConsulta", "GENERAL", "diagnostico", " "));
+        assertError(sinDiagnostico, 400);
+        assertThat(sinDiagnostico.cuerpo().path("detalle").asText()).isEqualTo("diagnostico no puede estar vacío");
         assertThat(jdbc.queryForObject("SELECT estado FROM citas WHERE id = ?", String.class, id))
                 .isEqualTo("AGENDADA");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial", Long.class)).isZero();
