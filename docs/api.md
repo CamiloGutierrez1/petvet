@@ -183,7 +183,19 @@ Las cuatro colas son durables. `petvet.notificaciones.dlx` es un exchange `direc
 - Una clave que no genera notificación, como `cita.cancelada`, se registra en el log y se descarta.
 - Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos.
 - Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces en total, con esperas de 1 s, 2 s, 4 s y 8 s. Así, un reinicio de MailHog de hasta unos 15 s no deja correos sin enviar. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
-- Para reprocesar un mensaje, se publica de nuevo en su cola con las mismas propiedades, por el exchange por defecto y con el nombre de la cola como clave. Con el plugin `rabbitmq_shovel_management` activo, el panel de RabbitMQ lo hace con "Move messages". Como el mensaje conserva su `messageId`, reprocesarlo no repite un correo ya enviado.
+- Los mensajes de una DLQ se reprocesan cuando se corrige la causa, como se explica en la sección siguiente.
+
+### Reprocesar una DLQ
+
+El servicio `rabbitmq` del Compose activa los plugins `rabbitmq_shovel` y `rabbitmq_shovel_management` con el archivo `infra/rabbitmq/enabled_plugins`, montado de solo lectura. Con ellos, el panel de RabbitMQ mueve los mensajes de una DLQ a su cola. Los plugins se leen al arrancar: si RabbitMQ ya estaba arriba, `docker compose up -d rabbitmq` recrea el contenedor con ellos.
+
+1. Abrir `http://localhost:15672` con el usuario y la clave de RabbitMQ del `.env`, que por defecto son `petvet` y `petvet_local`.
+2. En "Queues and Streams", abrir `notificaciones.citas.dlq` o `notificaciones.vacunas.dlq`.
+3. En la sección "Move messages", escribir en "Destination queue" la cola original, `notificaciones.citas` o `notificaciones.vacunas`, y pulsar "Move messages".
+
+El panel crea un shovel temporal que mueve los mensajes que hay en la DLQ y después se borra solo. Cada mensaje conserva sus propiedades, entre ellas `messageId` y `type`, y llega por el exchange por defecto con el nombre de la cola como clave. El listener lo enruta por `type` y, como el `messageId` es el mismo, no repite un correo que ya se había enviado. Si vuelve a fallar, el mensaje regresa a la DLQ.
+
+Sin el panel, el mensaje se publica de nuevo en su cola con las mismas propiedades, por el exchange por defecto y con el nombre de la cola como clave. Debe llevar `messageId` y `type`: sin `type`, el listener lo descarta como clave desconocida.
 
 ### Deduplicación
 
