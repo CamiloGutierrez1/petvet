@@ -139,7 +139,7 @@ class RegistrarConsultaUseCaseTest {
             RegistroHistorial guardado = new RegistroHistorial(7L, entrada.citaId(), entrada.mascotaId(),
                     entrada.veterinarioId(), entrada.fecha(), entrada.tipoConsulta(), entrada.diagnostico(),
                     entrada.vacunasAplicadas(), entrada.tratamientos(), entrada.examenes(),
-                    entrada.observaciones(), entrada.proximoControl());
+                    entrada.cirugias(), entrada.observaciones(), entrada.proximoControl());
             persistido.set(guardado);
             return guardado;
         });
@@ -149,6 +149,7 @@ class RegistrarConsultaUseCaseTest {
 
         assertThat(resultado.id()).isEqualTo(7L);
         assertThat(resultado.fecha()).isEqualTo(LocalDateTime.of(2026, 11, 9, 20, 0));
+        assertThat(resultado.cirugias()).containsExactly("Drenaje de absceso");
         ArgumentCaptor<Cita> completada = ArgumentCaptor.forClass(Cita.class);
         ArgumentCaptor<CitaCompletadaEvento> evento = ArgumentCaptor.forClass(CitaCompletadaEvento.class);
         InOrder orden = inOrder(historiales, citas, mascotas, eventos);
@@ -176,7 +177,7 @@ class RegistrarConsultaUseCaseTest {
         when(mascotas.buscar(3L)).thenReturn(MASCOTA);
         when(historiales.guardar(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
         DatosConsulta sinExamenes = new DatosConsulta(TipoConsulta.GENERAL, "Diagnóstico demo",
-                List.of(), List.of(), null, "Consulta académica", null);
+                List.of(), List.of(), null, null, "Consulta académica", null);
 
         registrar.ejecutar(42L, sinExamenes);
 
@@ -191,6 +192,7 @@ class RegistrarConsultaUseCaseTest {
 
     private DatosConsulta datos(String diagnostico) {
         return new DatosConsulta(TipoConsulta.GENERAL, diagnostico, List.of("Rabia"),
-                List.of(), List.of("Hemograma", "Coprológico"), "Consulta académica", HOY.plusDays(14));
+                List.of(), List.of("Hemograma", "Coprológico"), List.of("Drenaje de absceso"),
+                "Consulta académica", HOY.plusDays(14));
     }
 }

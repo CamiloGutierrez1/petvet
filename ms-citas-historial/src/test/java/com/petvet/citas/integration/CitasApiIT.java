@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -237,7 +238,8 @@ class CitasApiIT {
                     "tipoConsulta", "GENERAL", "diagnostico", "Consulta " + i,
                     "vacunasAplicadas", List.of("Vacuna " + i),
                     "tratamientos", List.of("Tratamiento " + i, "Reposo " + i),
-                    "examenes", List.of("Examen " + i)));
+                    "examenes", List.of("Examen " + i),
+                    "cirugias", List.of("Cirugía " + i)));
             assertThat(consulta.estado()).isEqualTo(201);
         }
         Statistics estadisticas = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
@@ -248,8 +250,9 @@ class CitasApiIT {
 
             assertThat(historial.estado()).isEqualTo(200);
             assertThat(historial.cuerpo().size()).isEqualTo(6);
-            // Una consulta para los registros y una por cada lista. Antes eran 1 + 3 por registro.
-            assertThat(estadisticas.getPrepareStatementCount()).isLessThanOrEqualTo(4);
+            // Una consulta para los registros y una por cada lista (vacunas, tratamientos, exámenes y
+            // cirugías). Sin la carga por lotes serían 1 + 4 por registro.
+            assertThat(estadisticas.getPrepareStatementCount()).isLessThanOrEqualTo(5);
             for (JsonNode registro : historial.cuerpo()) {
                 String numero = registro.path("diagnostico").asText().substring("Consulta ".length());
                 assertThat(registro.path("vacunasAplicadas")).extracting(JsonNode::asText)
@@ -258,6 +261,8 @@ class CitasApiIT {
                         .containsExactly("Tratamiento " + numero, "Reposo " + numero);
                 assertThat(registro.path("examenes")).extracting(JsonNode::asText)
                         .containsExactly("Examen " + numero);
+                assertThat(registro.path("cirugias")).extracting(JsonNode::asText)
+                        .containsExactly("Cirugía " + numero);
             }
         } finally {
             estadisticas.setStatisticsEnabled(false);
@@ -295,6 +300,8 @@ class CitasApiIT {
         assertThat(consulta.cuerpo().path("diagnostico").asText()).isEqualTo("Consulta de demostración");
         assertThat(consulta.cuerpo().path("tipoConsulta").asText()).isEqualTo("GENERAL");
         assertThat(consulta.cuerpo().path("tratamientos").get(0).asText()).isEqualTo("Tratamiento ficticio");
+        assertThat(consulta.cuerpo().path("cirugias").isArray()).as("sin cirugías, una lista vacía").isTrue();
+        assertThat(consulta.cuerpo().path("cirugias")).isEmpty();
 
         var historial = consultar("GET", "/api/mascotas/3/historial", null);
         assertThat(historial.estado()).isEqualTo(200);
@@ -315,6 +322,55 @@ class CitasApiIT {
         var vacunas = consultar("GET", "/api/mascotas/3/proximas-vacunas", null);
         assertThat(vacunas.estado()).isEqualTo(200);
         assertThat(vacunas.cuerpo().isArray()).isTrue();
+    }
+
+    @Test
+    void lasCirugiasDeLaConsultaSeGuardanEnOrdenYNoCambianElEvento() throws Exception {
+        long id = agendar(3, 1, fecha.atTime(16, 0)).cuerpo().path("id").asLong();
+        var consulta = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "ESPECIALISTA", "diagnostico", "Herida profunda en la pata trasera",
+                "tratamientos", List.of("Amoxicilina cada 12 horas por 7 días"),
+                "cirugias", List.of(" Limpieza quirúrgica de la herida ", "Sutura")));
+
+        assertThat(consulta.estado()).isEqualTo(201);
+        assertThat(consulta.cuerpo().path("cirugias")).extracting(JsonNode::asText)
+                .containsExactly("Limpieza quirúrgica de la herida", "Sutura");
+        var historial = consultar("GET", "/api/mascotas/3/historial", null);
+        assertThat(historial.cuerpo().get(0).path("cirugias")).extracting(JsonNode::asText)
+                .containsExactly("Limpieza quirúrgica de la herida", "Sutura");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM historial_cirugias", Long.class)).isEqualTo(2);
+        assertThat(jdbc.queryForList(
+                "SELECT jsonb_object_keys(payload) FROM outbox_eventos WHERE clave_deduplicacion = ?",
+                String.class, "cita.completada:" + id))
+                .as("las cirugías no viajan en cita.completada")
+                .containsExactlyInAnyOrder("citaId", "mascotaNombre", "duenoEmail", "diagnostico",
+                        "vacunasAplicadas", "proximoControl", "proximasVacunas", "examenes");
+    }
+
+    @Test
+    void rechazaCirugiasVaciasOEnExcesoSinCompletarLaCita() throws Exception {
+        long id = agendar(3, 1, fecha.atTime(16, 30)).cuerpo().path("id").asLong();
+        var vacia = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Consulta de demostración",
+                "cirugias", List.of("Sutura", " ")));
+        assertError(vacia, 400);
+        assertThat(vacia.cuerpo().path("detalle").asText()).isEqualTo("cirugias[1] no puede estar vacío");
+
+        var demasiadas = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Consulta de demostración",
+                "cirugias", Collections.nCopies(51, "Sutura")));
+        assertError(demasiadas, 400);
+        assertThat(demasiadas.cuerpo().path("detalle").asText()).isEqualTo("cirugias admite máximo 50 elementos");
+
+        var larga = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Consulta de demostración",
+                "cirugias", List.of("x".repeat(1001))));
+        assertError(larga, 400);
+        assertThat(larga.cuerpo().path("detalle").asText()).isEqualTo("cirugias[0] admite máximo 1000 caracteres");
+
+        assertThat(jdbc.queryForObject("SELECT estado FROM citas WHERE id = ?", String.class, id))
+                .isEqualTo("AGENDADA");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial", Long.class)).isZero();
     }
 
     @Test

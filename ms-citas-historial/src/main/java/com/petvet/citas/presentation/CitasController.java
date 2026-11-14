@@ -82,7 +82,7 @@ public class CitasController {
             @Valid @RequestBody NuevaConsulta datos) {
         RegistroHistorial registro = registrar.ejecutar(id, new DatosConsulta(datos.tipoConsulta(),
                 datos.diagnostico(), datos.vacunasAplicadas(), datos.tratamientos(), datos.examenes(),
-                datos.observaciones(), datos.proximoControl()));
+                datos.cirugias(), datos.observaciones(), datos.proximoControl()));
         return ResponseEntity.created(URI.create("/api/mascotas/" + registro.mascotaId() + "/historial"))
                 .body(registro);
     }
@@ -104,6 +104,7 @@ public class CitasController {
             @NotNull(message = OBLIGATORIO) LocalDateTime fechaHora,
             @NotNull(message = OBLIGATORIO) TipoServicio tipoServicio) { }
 
+    /** Las listas son opcionales: si no llegan, el historial las guarda vacías. */
     public record NuevaConsulta(
             @NotNull(message = OBLIGATORIO) TipoConsulta tipoConsulta,
             @NotBlank(message = SIN_TEXTO) @Size(max = 4000, message = MAX_CARACTERES) String diagnostico,
@@ -113,6 +114,8 @@ public class CitasController {
             List<@NotBlank(message = SIN_TEXTO) @Size(max = 1000, message = MAX_CARACTERES) String> tratamientos,
             @Size(max = 50, message = MAX_ELEMENTOS)
             List<@NotBlank(message = SIN_TEXTO) @Size(max = 1000, message = MAX_CARACTERES) String> examenes,
+            @Size(max = 50, message = MAX_ELEMENTOS)
+            List<@NotBlank(message = SIN_TEXTO) @Size(max = 1000, message = MAX_CARACTERES) String> cirugias,
             @Size(max = 4000, message = MAX_CARACTERES) String observaciones,
             LocalDate proximoControl) { }
 }

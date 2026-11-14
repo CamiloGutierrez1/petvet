@@ -19,7 +19,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        # Carga por lotes las listas del historial (vacunas, tratamientos y exámenes) y evita tres consultas por registro.
+        # Carga por lotes las listas del historial (vacunas, tratamientos, exámenes y cirugías) y evita cuatro consultas por registro.
         default_batch_fetch_size: 50
   task:
     scheduling:

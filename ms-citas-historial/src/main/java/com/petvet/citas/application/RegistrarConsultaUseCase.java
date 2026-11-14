@@ -56,6 +56,7 @@ public class RegistrarConsultaUseCase {
                 .vacunasAplicadas(datos.vacunasAplicadas())
                 .tratamientos(datos.tratamientos())
                 .examenes(datos.examenes())
+                .cirugias(datos.cirugias())
                 .observaciones(datos.observaciones())
                 .proximoControl(datos.proximoControl());
         Consulta consulta = switch (datos.tipoConsulta()) {

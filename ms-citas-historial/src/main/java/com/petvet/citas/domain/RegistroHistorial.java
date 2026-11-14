@@ -8,7 +8,8 @@ import java.util.Objects;
 public record RegistroHistorial(Long id, long citaId, long mascotaId, long veterinarioId,
                                 LocalDateTime fecha, TipoConsulta tipoConsulta, String diagnostico,
                                 List<String> vacunasAplicadas, List<String> tratamientos,
-                                List<String> examenes, String observaciones, LocalDate proximoControl) {
+                                List<String> examenes, List<String> cirugias, String observaciones,
+                                LocalDate proximoControl) {
 
     public RegistroHistorial {
         if (citaId <= 0 || mascotaId <= 0 || veterinarioId <= 0) {
@@ -27,6 +28,7 @@ public record RegistroHistorial(Long id, long citaId, long mascotaId, long veter
         vacunasAplicadas = copiarLista(vacunasAplicadas);
         tratamientos = copiarLista(tratamientos);
         examenes = copiarLista(examenes);
+        cirugias = copiarLista(cirugias);
     }
 
     private static List<String> copiarLista(List<String> valores) {
