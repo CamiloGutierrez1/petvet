@@ -1,3 +1,5 @@
+package com.petvet.mascotas.application.usecase;
+
 public class RegistrarDuenoUseCase {
 
     private final DuenoRepository duenoRepository;
