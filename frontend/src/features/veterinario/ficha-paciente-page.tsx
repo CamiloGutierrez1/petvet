@@ -1,6 +1,15 @@
 import type { ReactNode } from "react"
 import { useParams } from "react-router-dom"
-import { ClipboardList, Mail, PawPrint, Syringe } from "lucide-react"
+import {
+  ClipboardList,
+  IdCard,
+  Mail,
+  MapPin,
+  PawPrint,
+  Phone,
+  Syringe,
+  type LucideIcon,
+} from "lucide-react"
 import { estadoHttp, mensajeDeError } from "@/api/errores"
 import type { Cita, MascotaDetalle, RegistroHistorial } from "@/api/types"
 import { CargandoSkeleton } from "@/components/cargando-skeleton"
@@ -18,6 +27,7 @@ import {
 } from "@/features/duenos-mascotas/mascota-utils"
 import {
   useCitasDeMascota,
+  useDueno,
   useMascota,
   useProximasVacunas,
 } from "@/features/duenos-mascotas/use-ficha-mascota"
@@ -132,18 +142,55 @@ function DatosPaciente({ ficha }: { ficha: MascotaDetalle }) {
           ))}
         </dl>
       </section>
-      <section className="rounded-xl border bg-card p-5 text-sm">
-        <h2 className="mb-2 font-semibold">Dueño</h2>
-        <p className="font-medium">{ficha.duenoNombre}</p>
-        <a
-          href={`mailto:${ficha.duenoEmail}`}
-          className="mt-1 inline-flex items-center gap-1.5 text-primary hover:underline"
-        >
-          <Mail className="size-4" aria-hidden />
-          {ficha.duenoEmail}
-        </a>
-      </section>
+      <DatosDueno ficha={ficha} />
     </div>
+  )
+}
+
+/**
+ * Nombre y correo vienen en la ficha; documento, teléfono y dirección se
+ * piden aparte a GET /api/duenos/{id}. Si esa consulta falla, se muestra
+ * igual el nombre y el correo.
+ */
+function DatosDueno({ ficha }: { ficha: MascotaDetalle }) {
+  const { data: dueno, isLoading } = useDueno(ficha.duenoId)
+  const contacto: [LucideIcon, string, string | null | undefined][] = [
+    [IdCard, "Documento", dueno?.documento],
+    [Phone, "Teléfono", dueno?.telefono],
+    [MapPin, "Dirección", dueno?.direccion],
+  ]
+  return (
+    <section className="rounded-xl border bg-card p-5 text-sm">
+      <h2 className="mb-2 font-semibold">Dueño</h2>
+      <p className="font-medium">{ficha.duenoNombre}</p>
+      <a
+        href={`mailto:${ficha.duenoEmail}`}
+        className="mt-1 inline-flex items-center gap-1.5 break-all text-primary hover:underline"
+      >
+        <Mail className="size-4 shrink-0" aria-hidden />
+        {ficha.duenoEmail}
+      </a>
+      {isLoading ? (
+        <Skeleton className="mt-3 h-14 w-full" />
+      ) : (
+        dueno && (
+          <dl className="mt-3 flex flex-col gap-2 border-t pt-3">
+            {contacto.map(([Icono, etiqueta, valor]) => (
+              <div key={etiqueta} className="flex items-start gap-2">
+                <Icono
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+                <dt className="sr-only">{etiqueta}</dt>
+                <dd className={valor ? undefined : "text-muted-foreground"}>
+                  {valor ?? `${etiqueta}: sin registrar`}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )
+      )}
+    </section>
   )
 }
 
@@ -236,6 +283,7 @@ function EntradaHistorial({
     ["Vacunas aplicadas", registro.vacunasAplicadas],
     ["Tratamientos", registro.tratamientos],
     ["Exámenes", registro.examenes],
+    ["Cirugías", registro.cirugias],
   ]
   return (
     <li className="relative">

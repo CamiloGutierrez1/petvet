@@ -10,6 +10,7 @@
     "vacunasAplicadas": [],
     "tratamientos": ["Gotas óticas 7 días"],
     "examenes": ["Otoscopia"],
+    "cirugias": [],
     "observaciones": "Control en 2 semanas",
     "proximoControl": "2026-11-11"
   }

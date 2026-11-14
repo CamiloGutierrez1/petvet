@@ -13,7 +13,7 @@ const ICONO: Record<Especie, LucideIcon> = {
 interface FotoMascotaProps {
   nombre: string
   especie: Especie
-  fotoUrl?: string
+  fotoUrl?: string | null
   className?: string
 }
 

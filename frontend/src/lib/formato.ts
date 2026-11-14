@@ -28,6 +28,12 @@ export function formatearHora(fechaHora: string): string {
   return `${format(fecha, "h:mm")} ${sufijo}`
 }
 
+/** Horario de un veterinario: ("08:00", "18:00") → "8:00 a. m. a 6:00 p. m." */
+export function formatearHorario(horaInicio: string, horaFin: string): string {
+  const hora = (hhmm: string) => formatearHora(`2000-01-01T${hhmm}:00`)
+  return `${hora(horaInicio)} a ${hora(horaFin)}`
+}
+
 /** "2026-11-20T09:30:00" → "vie 20 nov 2026, 9:30 a. m." */
 export function formatearFechaHora(fechaHora: string): string {
   const fecha = parseISO(fechaHora)

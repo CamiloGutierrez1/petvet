@@ -21,7 +21,7 @@ import type {
 
 // Copia en memoria para que, en modo mocks, lo que se registra aparezca en
 // las listas hasta recargar la página.
-const duenos: Dueno[] = [...duenosMock]
+const duenos: Dueno[] = [...(duenosMock as Dueno[])]
 const mascotas: Mascota[] = [...(mascotasMock as Mascota[])]
 
 const siguienteId = (items: { id: number }[]) =>
@@ -43,16 +43,24 @@ function buscarMascota(id: number): Mascota {
 
 export async function registrarDueno(datos: NuevoDueno): Promise<Dueno> {
   if (USE_MOCKS_MASCOTAS) {
-    // confirmar con back: que Mascotas responda 409 si el correo ya existe
+    // Igual que el back: correo en minúsculas y único, opcionales vacíos como null.
     const correo = datos.email.trim().toLowerCase()
     if (duenos.some((d) => d.email.toLowerCase() === correo)) {
       throw errorSimulado(
         409,
         "CONFLICTO",
-        "Ya hay un dueño registrado con ese correo.",
+        "Ya existe un dueño registrado con ese correo.",
       )
     }
-    const dueno = { id: siguienteId(duenos), ...datos }
+    const opcional = (valor?: string) => valor?.trim() || null
+    const dueno: Dueno = {
+      id: siguienteId(duenos),
+      nombre: datos.nombre.trim(),
+      documento: opcional(datos.documento),
+      email: correo,
+      telefono: opcional(datos.telefono),
+      direccion: opcional(datos.direccion),
+    }
     duenos.push(dueno)
     return simularRespuesta(dueno)
   }
@@ -89,7 +97,12 @@ export async function registrarMascota(
   datos: NuevaMascota,
 ): Promise<Mascota> {
   if (USE_MOCKS_MASCOTAS) {
-    const mascota = { id: siguienteId(mascotas), duenoId, ...datos }
+    const mascota: Mascota = {
+      id: siguienteId(mascotas),
+      duenoId,
+      fotoUrl: null,
+      ...datos,
+    }
     mascotas.push(mascota)
     return simularRespuesta(mascota)
   }
@@ -147,7 +160,7 @@ export async function subirFotoMascota(
     return simularRespuesta(mascota)
   }
   const formData = new FormData()
-  formData.append("foto", foto) // confirmar con back: nombre del campo
+  formData.append("foto", foto) // JPG, PNG o WebP de hasta 5 MB
   const { data } = await mascotasApi.post<Mascota>(
     `/mascotas/${id}/foto`,
     formData,

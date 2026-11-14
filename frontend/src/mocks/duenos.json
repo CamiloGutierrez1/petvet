@@ -2,13 +2,17 @@
   {
     "id": 1,
     "nombre": "Laura Méndez",
+    "documento": "1000000001",
     "email": "laura.mendez@correo.com",
-    "telefono": "3104567812"
+    "telefono": "3104567812",
+    "direccion": "Calle 10 # 20-30, Bogotá"
   },
   {
     "id": 2,
     "nombre": "Santiago Rojas",
+    "documento": "1000000002",
     "email": "santiago.rojas@correo.com",
-    "telefono": "3157781204"
+    "telefono": "3157781204",
+    "direccion": "Carrera 15 # 40-50, Bogotá"
   }
 ]

@@ -62,6 +62,7 @@ const esquema = z.object({
   vacunasAplicadas: z.array(z.string().max(200)).max(50),
   tratamientos: z.array(z.string().max(1000)).max(50),
   examenes: z.array(z.string().max(1000)).max(50),
+  cirugias: z.array(z.string().max(1000)).max(50),
   observaciones: z.string().trim().max(4000, "Máximo 4000 caracteres."),
   proximoControl: z
     .string()
@@ -173,6 +174,7 @@ function FormularioConsulta({
       vacunasAplicadas: [],
       tratamientos: [],
       examenes: [],
+      cirugias: [],
       observaciones: "",
       proximoControl: "",
     },
@@ -301,6 +303,23 @@ function FormularioConsulta({
                 valor={field.value}
                 onChange={field.onChange}
                 placeholder="Ej. Otoscopia"
+                maxLargo={1000}
+              />
+            )}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="cirugias">Cirugías</FieldLabel>
+          <Controller
+            control={control}
+            name="cirugias"
+            render={({ field }) => (
+              <ListaTextos
+                id="cirugias"
+                valor={field.value}
+                onChange={field.onChange}
+                placeholder="Ej. Esterilización"
                 maxLargo={1000}
               />
             )}

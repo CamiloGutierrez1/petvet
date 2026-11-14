@@ -2,7 +2,8 @@
 // Cada función llama a la API real o, si VITE_USE_MOCKS=true, responde con
 // los datos de src/mocks. Las páginas no saben cuál de los dos se usa.
 // Los mocks imitan las reglas del servicio real (ver docs/api.md y
-// docs/decisiones.md): turnos de 30 min de 8:00 a 18:00, sin horas pasadas,
+// docs/decisiones.md): turnos de 30 min dentro del horario de cada
+// veterinario, sin horas pasadas, 400 si la hora no es un turno válido,
 // 409 si el turno está ocupado y 404 si el recurso no existe.
 
 import citasMock from "@/mocks/citas.json"
@@ -39,19 +40,29 @@ const historial: RegistroHistorial[] = [
 const proximasVacunas: VacunaConMascota[] = [...proximasVacunasMock]
 
 const DURACION_MINUTOS = 30
-const APERTURA_MIN = 8 * 60 // 8:00
-const CIERRE_MIN = 18 * 60 // 18:00
 
-/** Turnos del día: "08:00:00", "08:30:00", ..., "17:30:00". */
-const TURNOS = Array.from(
-  { length: (CIERRE_MIN - APERTURA_MIN) / DURACION_MINUTOS },
-  (_, i) => {
-    const minutos = APERTURA_MIN + i * DURACION_MINUTOS
+const aMinutos = (hora: string) => {
+  const [hh, mm] = hora.split(":").map(Number)
+  return hh * 60 + mm
+}
+
+/**
+ * Turnos del día de un veterinario, desde su horaInicio hasta el último que
+ * termina a más tardar en su horaFin. Ej. 08:00 a 18:00: "08:00:00" ... "17:30:00".
+ */
+function turnosDelVeterinario({ horaInicio, horaFin }: Veterinario): string[] {
+  const turnos: string[] = []
+  for (
+    let minutos = aMinutos(horaInicio);
+    minutos + DURACION_MINUTOS <= aMinutos(horaFin);
+    minutos += DURACION_MINUTOS
+  ) {
     const hh = String(Math.floor(minutos / 60)).padStart(2, "0")
     const mm = String(minutos % 60).padStart(2, "0")
-    return `${hh}:${mm}:00`
-  },
-)
+    turnos.push(`${hh}:${mm}:00`)
+  }
+  return turnos
+}
 
 function buscarCita(id: number): Cita {
   const cita = citas.find((c) => c.id === id)
@@ -74,6 +85,7 @@ function buscarVeterinario(id: number): Veterinario {
 
 /** Turnos libres de un veterinario en una fecha, con las mismas reglas del back. */
 function turnosLibres(veterinarioId: number, fecha: string): string[] {
+  const veterinario = buscarVeterinario(veterinarioId)
   const ahora = ahoraIsoLocal()
   const ocupadas = citas
     .filter(
@@ -83,9 +95,9 @@ function turnosLibres(veterinarioId: number, fecha: string): string[] {
         c.fechaHora.startsWith(fecha),
     )
     .map((c) => c.fechaHora)
-  return TURNOS.map((t) => `${fecha}T${t}`).filter(
-    (fechaHora) => fechaHora > ahora && !ocupadas.includes(fechaHora),
-  )
+  return turnosDelVeterinario(veterinario)
+    .map((t) => `${fecha}T${t}`)
+    .filter((fechaHora) => fechaHora > ahora && !ocupadas.includes(fechaHora))
 }
 
 // ---------- Veterinarios ----------
@@ -102,7 +114,6 @@ export async function getDisponibilidad(
   fecha: string,
 ): Promise<Disponibilidad> {
   if (USE_MOCKS_CITAS) {
-    buscarVeterinario(veterinarioId)
     return simularRespuesta({
       veterinarioId,
       fecha,
@@ -120,8 +131,18 @@ export async function getDisponibilidad(
 
 export async function agendarCita(datos: NuevaCita): Promise<Cita> {
   if (USE_MOCKS_CITAS) {
-    buscarVeterinario(datos.veterinarioId)
-    const fecha = datos.fechaHora.slice(0, 10)
+    const veterinario = buscarVeterinario(datos.veterinarioId)
+    const [fecha, hora] = datos.fechaHora.split("T")
+    if (
+      datos.fechaHora <= ahoraIsoLocal() ||
+      !turnosDelVeterinario(veterinario).includes(hora)
+    ) {
+      throw errorSimulado(
+        400,
+        "DATOS_INVALIDOS",
+        `La cita debe quedar dentro del horario del veterinario, de ${veterinario.horaInicio} a ${veterinario.horaFin}`,
+      )
+    }
     if (!turnosLibres(datos.veterinarioId, fecha).includes(datos.fechaHora)) {
       throw errorSimulado(
         409,
@@ -265,6 +286,7 @@ export async function registrarConsulta(
       vacunasAplicadas: datos.vacunasAplicadas ?? [],
       tratamientos: datos.tratamientos ?? [],
       examenes: datos.examenes ?? [],
+      cirugias: datos.cirugias ?? [],
       observaciones: datos.observaciones?.trim() || null,
       proximoControl: datos.proximoControl ?? null,
     }

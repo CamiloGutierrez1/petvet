@@ -27,9 +27,13 @@ import {
   etiquetaServicio,
   formatearFechaHora,
   formatearHora,
+  formatearHorario,
   TIPOS_SERVICIO,
 } from "@/lib/formato"
 import { useAgendarCita, useDisponibilidad } from "./use-agendar"
+
+/** Agrega el punto final si el texto no termina en puntuación. */
+const conPunto = (texto: string) => (/[.!?]$/.test(texto) ? texto : `${texto}.`)
 
 /**
  * Ruta "/dueno/agendar". El dueño elige mascota, veterinario, día, hora
@@ -197,6 +201,9 @@ export function AgendarCitaPage() {
                       <span className="text-xs text-muted-foreground">
                         {v.especialidad}
                       </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatearHorario(v.horaInicio, v.horaFin)}
+                      </span>
                     </span>
                   </Opcion>
                 ))}
@@ -300,8 +307,10 @@ export function AgendarCitaPage() {
               className="flex items-start gap-2 rounded-lg bg-destructive/5 p-3 text-sm text-destructive"
             >
               <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              {/* 409: el back dice si el turno lo tomó otro dueño o si la
+                  mascota ya tiene otra cita a esa hora. */}
               {estadoHttp(agendar.error) === 409
-                ? "Ese horario ya está ocupado. Elige otra hora."
+                ? `${conPunto(mensajeDeError(agendar.error, "Ese horario ya está ocupado."))} Elige otra hora.`
                 : mensajeDeError(agendar.error, "No se pudo agendar la cita.")}
             </div>
           )}

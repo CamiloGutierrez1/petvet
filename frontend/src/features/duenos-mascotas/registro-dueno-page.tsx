@@ -29,12 +29,15 @@ const esquema = z.object({
   email: z
     .string()
     .trim()
-    .email("Escribe un correo válido, ej. ana@correo.com."),
+    .email("Escribe un correo válido, ej. ana@correo.com.")
+    .max(254, "Máximo 254 caracteres."),
+  documento: z.string().trim().max(30, "Máximo 30 caracteres."),
   telefono: z
     .string()
     .trim()
     .regex(/^\d{7,10}$/, "Solo números, entre 7 y 10 dígitos.")
     .or(z.literal("")),
+  direccion: z.string().trim().max(200, "Máximo 200 caracteres."),
 })
 
 type FormularioDueno = z.infer<typeof esquema>
@@ -56,16 +59,21 @@ export function RegistroDuenoPage() {
     defaultValues: {
       nombre: "",
       email: params.get("email") ?? "",
+      documento: "",
       telefono: "",
+      direccion: "",
     },
   })
 
   function enviar(valores: FormularioDueno) {
+    // Los opcionales vacíos no se envían; el back los guarda como null.
     registrar.mutate(
       {
         nombre: valores.nombre,
         email: valores.email,
+        documento: valores.documento || undefined,
         telefono: valores.telefono || undefined,
+        direccion: valores.direccion || undefined,
       },
       {
         onSuccess: (dueno) => {
@@ -129,26 +137,54 @@ export function RegistroDuenoPage() {
               <FieldError errors={[errors.email]} />
             </Field>
 
-            <Field data-invalid={!!errors.telefono}>
-              <FieldLabel htmlFor="telefono">
-                Teléfono{" "}
-                <span className="font-normal text-muted-foreground">
-                  (opcional)
-                </span>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field data-invalid={!!errors.documento}>
+                <FieldLabel htmlFor="documento">
+                  Documento <Opcional />
+                </FieldLabel>
+                <Input
+                  id="documento"
+                  inputMode="numeric"
+                  placeholder="1020304050"
+                  aria-invalid={!!errors.documento}
+                  {...register("documento")}
+                />
+                <FieldError errors={[errors.documento]} />
+              </Field>
+
+              <Field data-invalid={!!errors.telefono}>
+                <FieldLabel htmlFor="telefono">
+                  Teléfono <Opcional />
+                </FieldLabel>
+                <Input
+                  id="telefono"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  placeholder="3104567812"
+                  aria-invalid={!!errors.telefono}
+                  {...register("telefono")}
+                />
+                <FieldError errors={[errors.telefono]} />
+              </Field>
+            </div>
+
+            <Field data-invalid={!!errors.direccion}>
+              <FieldLabel htmlFor="direccion">
+                Dirección <Opcional />
               </FieldLabel>
               <Input
-                id="telefono"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="3104567812"
-                aria-invalid={!!errors.telefono}
-                {...register("telefono")}
+                id="direccion"
+                autoComplete="street-address"
+                placeholder="Calle 10 # 20-30, Bogotá"
+                aria-invalid={!!errors.direccion}
+                {...register("direccion")}
               />
               <FieldDescription>
-                Para avisarte si cambia el horario de una cita.
+                La clínica usa el teléfono y la dirección solo para contactarte
+                por tus citas.
               </FieldDescription>
-              <FieldError errors={[errors.telefono]} />
+              <FieldError errors={[errors.direccion]} />
             </Field>
           </FieldGroup>
 
@@ -183,4 +219,8 @@ export function RegistroDuenoPage() {
       </div>
     </LayoutEntrada>
   )
+}
+
+function Opcional() {
+  return <span className="font-normal text-muted-foreground">(opcional)</span>
 }
