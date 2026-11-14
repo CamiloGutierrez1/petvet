@@ -33,7 +33,9 @@ Citas expone también `/actuator/health` y `/v3/api-docs`. Para cambiar la confi
 
 ### Cómo se suman los demás servicios
 
-Mascotas y Dueños y Notificaciones se suman al crear sus carpetas: un `<module>` en el `pom.xml` raíz, un servicio con perfil `app` en `docker-compose.yml` y su puerto en `scripts/verificar_local.py`. Los puertos y las bases de datos reservados para cada uno están en la [tabla de servicios](docs/api.md#servicios-y-puertos).
+Cada servicio nuevo se suma así: un `<module>` en el `pom.xml` raíz, un servicio con perfil `app` en `docker-compose.yml`, su puerto en `scripts/verificar_local.py` y un `Dockerfile` en su carpeta que compile solo su módulo con `mvn -B -ntp -f <modulo>/pom.xml -DskipTests package`. Con `-f`, Maven toma el `pom.xml` raíz como padre sin leer los demás módulos, así que el `Dockerfile` copia solo el `pom.xml` raíz, el del módulo y su `src`. Con `-pl` desde la raíz, la imagen dejaría de compilar en cuanto el `pom.xml` raíz liste otro módulo. Los puertos y las bases de datos reservados para cada uno están en la [tabla de servicios](docs/api.md#servicios-y-puertos).
+
+Cada módulo hereda del `pom.xml` raíz las dependencias comunes (web, validation, data-jpa, el driver de PostgreSQL, actuator, springdoc y test) y declara solo las propias, por ejemplo Flyway, Testcontainers o AMQP.
 
 ## Demostración de Citas e Historial
 

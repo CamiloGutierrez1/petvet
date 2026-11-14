@@ -1,0 +1,46 @@
+server:
+  port: 8081
+  tomcat:
+    # Lo que Tomcat lee y descarta de una subida rechazada antes de cerrar la respuesta. Con los 2 MB por defecto,
+    # una foto de 7 MB dejaba el 400 a medias y el cliente veía un error de red en vez del mensaje.
+    max-swallow-size: 25MB
+
+spring:
+  application:
+    name: ms-mascotas-duenos
+  datasource:
+    url: jdbc:postgresql://localhost:5433/mascotas
+    username: ${PETVET_DB_USER:petvet}
+    password: ${PETVET_DB_PASSWORD:petvet_local}
+  flyway:
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  servlet:
+    multipart:
+      # El front deja subir fotos de hasta 5 MB. El margen de la solicitud cubre los encabezados del formulario.
+      max-file-size: 5MB
+      max-request-size: 6MB
+      # El formulario se lee al resolver el parámetro foto, cuando ya se aplicó CORS: así el 400 de una foto
+      # de más de 5 MB llega al navegador con Access-Control-Allow-Origin y el front puede mostrarlo.
+      resolve-lazily: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+petvet:
+  cors:
+    allowed-origins: ${PETVET_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  # Misma variable y valor por defecto que Citas, para que "fecha de nacimiento futura" signifique lo mismo en los dos.
+  zona: ${PETVET_AGENDA_ZONA:America/Bogota}
+  fotos:
+    # Base absoluta de la fotoUrl de las fotos subidas. La usa el navegador, no otros contenedores.
+    url-base: ${PETVET_FOTOS_URL_BASE:http://localhost:8081}

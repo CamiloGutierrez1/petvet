@@ -77,6 +77,26 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  ms-mascotas-duenos:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ms-mascotas-duenos/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mascotas:5432/mascotas
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      # La misma zona que Citas: una fecha de nacimiento futura significa lo mismo en los dos servicios.
+      PETVET_AGENDA_ZONA: ${PETVET_AGENDA_ZONA:-America/Bogota}
+      # Base de la fotoUrl de las fotos subidas. La usa el navegador, por eso apunta al puerto publicado.
+      PETVET_FOTOS_URL_BASE: ${PETVET_FOTOS_URL_BASE:-http://localhost:8081}
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      postgres-mascotas:
+        condition: service_healthy
+
   ms-citas-historial:
     profiles: [app]
     build:

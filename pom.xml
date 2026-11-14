@@ -19,6 +19,7 @@
     <description>Sistema académico de gestión de una clínica veterinaria</description>
 
     <modules>
+        <module>ms-mascotas-duenos</module>
         <module>ms-citas-historial</module>
     </modules>
 
