@@ -19,7 +19,9 @@ interface ListaTextosProps {
 /**
  * Lista de textos cortos: se escribe, se presiona Enter (o "Agregar") y
  * queda como una etiqueta que se puede quitar. Para vacunas, tratamientos,
- * exámenes, etc.
+ * exámenes, etc. Si el usuario escribe y sale de la caja sin presionar Enter
+ * (otro campo o el botón Guardar), el texto se agrega igual: así no se pierde
+ * en silencio al enviar el formulario.
  */
 export function ListaTextos({
   id,
@@ -63,6 +65,7 @@ export function ListaTextos({
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={alPresionar}
+          onBlur={() => agregar(texto)}
           placeholder={placeholder}
           maxLength={maxLargo}
           disabled={lleno}
