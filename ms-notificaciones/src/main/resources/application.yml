@@ -1,0 +1,68 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: ms-notificaciones
+  datasource:
+    url: jdbc:postgresql://localhost:5435/notificaciones
+    username: ${PETVET_DB_USER:petvet}
+    password: ${PETVET_DB_PASSWORD:petvet_local}
+  flyway:
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: ${PETVET_RABBITMQ_USER:petvet}
+    password: ${PETVET_RABBITMQ_PASSWORD:petvet_local}
+    connection-timeout: 3s
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 10
+        # Sin esto Spring AMQP reencola sin fin el mensaje que falla. Rechazado, pasa a la DLQ de su cola.
+        default-requeue-rejected: false
+        # Fallas pasajeras (SMTP o base caídos): 5 intentos, con esperas de 1, 2, 4 y 8 s, así que un
+        # reinicio de MailHog de hasta unos 15 s no deja correos en la DLQ.
+        # Los mensajes sin messageId, con JSON inválido o con un destino mal escrito no se reintentan
+        # (PoliticaReintentos).
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 10s
+  mail:
+    # Valores para correr desde el IDE con el MailHog del Compose. En Compose: mailhog:1025.
+    host: localhost
+    port: 1025
+    default-encoding: UTF-8
+    properties:
+      # JavaMail espera sin límite por defecto y dejaría colgado al consumidor.
+      "[mail.smtp.connectiontimeout]": 3000
+      "[mail.smtp.timeout]": 3000
+      "[mail.smtp.writetimeout]": 3000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  health:
+    # La salud refleja la base y RabbitMQ. Si MailHog no responde, el correo se reintenta y va a la DLQ.
+    mail:
+      enabled: false
+
+petvet:
+  cors:
+    allowed-origins: ${PETVET_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  notificaciones:
+    zona: ${PETVET_NOTIFICACIONES_ZONA:America/Bogota}
+    remitente: "${PETVET_NOTIFICACIONES_REMITENTE:PetVet <notificaciones@petvet.local>}"

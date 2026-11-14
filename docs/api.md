@@ -252,3 +252,143 @@ Citas implementa la publicación en el exchange durable `petvet.events` de tipo 
 En `cita.completada`, `vacunasAplicadas` es un arreglo de textos, `proximasVacunas` un arreglo de objetos `VacunaPendiente` y `proximoControl` una fecha de calendario o nulo. El campo numérico `mascotaId` de `vacuna.proxima` es una extensión local del plan por confirmar con Pia.
 
 Notificaciones debe enlazar `notificaciones.citas` con `cita.*` y `notificaciones.vacunas` con `vacuna.*`. Cada mensaje persistente tiene el cuerpo JSON en UTF-8 y un UUID estable en la propiedad AMQP `messageId`. La entrega es al menos una vez y el consumidor debe deduplicar por esa propiedad. Si RabbitMQ no está disponible o no hay cola enlazada, el evento queda pendiente en PostgreSQL para reintento.
+
+## Notificaciones
+
+`ms-notificaciones` escucha en el puerto `8083` y guarda sus datos en `postgres-notificaciones` (`5435`). Consume los eventos de Citas y envía un correo por evento al SMTP configurado. En local los correos llegan a MailHog, en `http://localhost:8025`.
+
+### Colas y enlaces
+
+Al arrancar, el servicio declara el exchange `petvet.events` igual que Citas: `topic`, durable y sin `autoDelete`. También declara sus colas y sus DLQ.
+
+| Cola | Enlace desde `petvet.events` | Mensajes rechazados | DLQ |
+| --- | --- | --- | --- |
+| `notificaciones.citas` | `cita.*` | `petvet.notificaciones.dlx` con la clave `notificaciones.citas.dlq` | `notificaciones.citas.dlq` |
+| `notificaciones.vacunas` | `vacuna.*` | `petvet.notificaciones.dlx` con la clave `notificaciones.vacunas.dlq` | `notificaciones.vacunas.dlq` |
+
+Las cuatro colas son durables. `petvet.notificaciones.dlx` es un exchange `direct` durable y enlaza cada DLQ con su propio nombre. Si ya existe una cola con el mismo nombre y otros argumentos, por ejemplo creada a mano sin DLQ, RabbitMQ rechaza la declaración con `PRECONDITION_FAILED`. En ese caso hay que borrar la cola antes de arrancar el servicio.
+
+### Procesamiento de los mensajes
+
+- Cada cola tiene un solo listener. El listener recibe el mensaje sin convertir y elige el caso de uso por la routing key: `cita.agendada`, `cita.completada` o `vacuna.proxima`. Si el mensaje se reenvió desde una DLQ, usa la propiedad `type`, que Citas llena con la misma clave.
+- El cuerpo se lee como JSON y se ignoran los campos desconocidos. `examenes` en `cita.completada` es opcional y, si llega, se lista en el resumen. `duenoNombre` es opcional en `cita.completada` y `vacuna.proxima`. Cuando el evento lo trae, el correo saluda por nombre.
+- Una clave que no genera notificación, como `cita.cancelada`, se registra en el log y se descarta.
+- Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos. Lo mismo pasa si el correo del dueño no es una dirección válida, como `laura,mendez@correo.com`, porque fallaría igual en cada intento.
+- Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces en total, con esperas de 1 s, 2 s, 4 s y 8 s. Así, un reinicio de MailHog de hasta unos 15 s no deja correos sin enviar. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
+- Los mensajes de una DLQ se reprocesan cuando se corrige la causa, como se explica en la sección siguiente.
+
+### Reprocesar una DLQ
+
+El servicio `rabbitmq` del Compose activa los plugins `rabbitmq_shovel` y `rabbitmq_shovel_management` con el archivo `infra/rabbitmq/enabled_plugins`, montado de solo lectura. Con ellos, el panel de RabbitMQ mueve los mensajes de una DLQ a su cola. Los plugins se leen al arrancar: si RabbitMQ ya estaba arriba, `docker compose up -d rabbitmq` recrea el contenedor con ellos.
+
+1. Abrir `http://localhost:15672` con el usuario y la clave de RabbitMQ del `.env`, que por defecto son `petvet` y `petvet_local`.
+2. En "Queues and Streams", abrir `notificaciones.citas.dlq` o `notificaciones.vacunas.dlq`.
+3. En la sección "Move messages", escribir en "Destination queue" la cola original, `notificaciones.citas` o `notificaciones.vacunas`, y pulsar "Move messages".
+
+El panel crea un shovel temporal que mueve los mensajes que hay en la DLQ y después se borra solo. Cada mensaje conserva sus propiedades, entre ellas `messageId` y `type`, y llega por el exchange por defecto con el nombre de la cola como clave. El listener lo enruta por `type` y, como el `messageId` es el mismo, no repite un correo que ya se había enviado. Si vuelve a fallar, el mensaje regresa a la DLQ.
+
+Sin el panel, el mensaje se publica de nuevo en su cola con las mismas propiedades, por el exchange por defecto y con el nombre de la cola como clave. Debe llevar `messageId` y `type`: sin `type`, el listener lo descarta como clave desconocida.
+
+### Deduplicación
+
+La tabla `notificaciones` guarda una fila por correo enviado.
+
+| Columna | Contenido |
+| --- | --- |
+| `id` | Identificador generado. |
+| `message_id` | Propiedad AMQP `messageId`, que es el UUID de la outbox de Citas. Es única. |
+| `tipo` | `CITA_AGENDADA`, `CITA_COMPLETADA` o `VACUNA_PROXIMA`. |
+| `destino`, `asunto`, `cuerpo` | Correo enviado. |
+| `creada_en`, `enviada_en` | Instantes con zona horaria. |
+
+Todo ocurre en una transacción. Primero se inserta la fila con `INSERT ... ON CONFLICT (message_id) DO NOTHING`. Si el `messageId` ya existía, el mensaje se confirma sin enviar nada. Si es nuevo, el correo se envía de último. Si el SMTP falla, la transacción se deshace y el mensaje se reintenta. Solo puede quedar un duplicado si la base falla al confirmar después de que el SMTP aceptó el correo.
+
+### Correos
+
+Los correos son texto plano en UTF-8. El remitente por defecto es `PetVet <notificaciones@petvet.local>` y se cambia con `PETVET_NOTIFICACIONES_REMITENTE`, que el Compose toma del `.env`. Las fechas se escriben en español y la hora usa el formato de 24 horas. `PETVET_NOTIFICACIONES_ZONA` fija la zona con que se compara la fecha de las vacunas; por defecto es `America/Bogota`. En el Compose toma el valor de `PETVET_AGENDA_ZONA`, así que Notificaciones usa la misma zona que Citas.
+
+| Evento | Asunto |
+| --- | --- |
+| `cita.agendada` | `Confirmación de la cita de {mascota}` |
+| `cita.completada` | `Resumen de la consulta de {mascota}` |
+| `vacuna.proxima` | `Recordatorio: vacuna {vacuna} de {mascota}` |
+
+Ejemplo de `cita.agendada` con datos sintéticos.
+
+```text
+Hola, Laura Méndez:
+
+La cita de vacunación de Tobby con la Dra. Paula Castaño quedó para el viernes 20 de noviembre de 2026 a las 09:30.
+
+Si no puede asistir, cancele la cita en PetVet para liberar el turno.
+
+Equipo PetVet
+```
+
+Ejemplo de `cita.completada` con exámenes. Sin exámenes, la línea de exámenes no aparece. Si faltan datos, el correo dice `Vacunas aplicadas: ninguna`, `Próximo control: sin control programado` o `Próximas vacunas: ninguna pendiente`.
+
+```text
+Hola:
+
+Este es el resumen de la consulta de Tobby.
+
+Diagnóstico: Otitis leve
+Vacunas aplicadas: Rabia
+Exámenes registrados en la consulta: Hemograma, Otoscopia
+Próximo control: viernes 4 de diciembre de 2026
+
+Próximas vacunas:
+- Polivalente: antes del domingo 13 de diciembre de 2026
+- Rabia: antes del sábado 20 de noviembre de 2027
+
+Equipo PetVet
+```
+
+Ejemplo de `vacuna.proxima`. Si la fecha límite es hoy, la frase dice `vence hoy, ...`, y si ya pasó, `venció el ...`.
+
+```text
+Hola:
+
+La vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.
+
+Puede agendar la cita de vacunación en PetVet.
+
+Equipo PetVet
+```
+
+### Consulta de lo enviado
+
+| Método y ruta | Uso |
+| --- | --- |
+| `GET /api/notificaciones?limite=20` | Listar las últimas notificaciones enviadas, de la más reciente a la más antigua. `limite` va de 1 a 100 y vale 20 por defecto. |
+| `GET /actuator/health` | Consultar la salud del servicio. |
+| `GET /v3/api-docs` | Consultar el documento OpenAPI en JSON. |
+| `GET /swagger-ui/index.html` | Abrir la interfaz de Swagger. |
+
+Ejemplo de respuesta de `GET /api/notificaciones?limite=1`.
+
+```json
+[
+  {
+    "id": 2,
+    "messageId": "6b1f3c2e-9d7a-4f0e-8c55-0a4b2d9e7f13",
+    "tipo": "VACUNA_PROXIMA",
+    "destino": "santiago.rojas@correo.com",
+    "asunto": "Recordatorio: vacuna Polivalente de Max",
+    "cuerpo": "Hola:\n\nLa vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.\n\nPuede agendar la cita de vacunación en PetVet.\n\nEquipo PetVet\n",
+    "creadaEn": "2026-11-13T17:00:00.412318Z",
+    "enviadaEn": "2026-11-13T17:00:00.415027Z"
+  }
+]
+```
+
+Un límite fuera de rango responde `400` con el formato de error del servicio.
+
+```json
+{
+  "error": "DATOS_INVALIDOS",
+  "detalle": "El límite debe estar entre 1 y 100"
+}
+```
+
+La salud refleja PostgreSQL y RabbitMQ. El chequeo de correo está desactivado para que una caída de MailHog no marque el servicio como caído: en ese caso cada correo se reintenta durante unos 15 s y, si MailHog sigue caído, pasa a la DLQ.

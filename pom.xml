@@ -21,6 +21,7 @@
     <modules>
         <module>ms-mascotas-duenos</module>
         <module>ms-citas-historial</module>
+        <module>ms-notificaciones</module>
     </modules>
 
     <properties>
