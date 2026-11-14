@@ -1,3 +1,5 @@
+package com.petvet.mascotas.domain;
+
 import java.time.LocalDate;
 
 public class Mascota {
