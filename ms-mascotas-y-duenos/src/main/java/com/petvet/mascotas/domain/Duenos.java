@@ -1,3 +1,5 @@
+package com.petvet.mascotas.domain;
+
 public class Dueno {
 
     private Long duenoId;
