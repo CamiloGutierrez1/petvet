@@ -2,7 +2,10 @@ package com.petvet.notificaciones.application.eventos;
 
 import java.time.LocalDate;
 
-/** Evento vacuna.proxima. {@code duenoNombre} es opcional: hoy Citas no lo publica en este evento. */
+/**
+ * Evento vacuna.proxima. {@code duenoNombre} es opcional: los eventos que ya estaban en la outbox de
+ * Citas no lo traen.
+ */
 public record VacunaProxima(
         Long mascotaId,
         String mascotaNombre,

@@ -3,12 +3,16 @@ package com.petvet.notificaciones.infrastructure.messaging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.petvet.notificaciones.application.PlantillasCorreo;
 import com.petvet.notificaciones.application.eventos.CitaAgendada;
 import com.petvet.notificaciones.application.eventos.CitaCompletada;
 import com.petvet.notificaciones.application.eventos.VacunaPendiente;
 import com.petvet.notificaciones.application.eventos.VacunaProxima;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,13 +44,29 @@ class ContratoEventosCitasTest {
             "proximasVacunas": [{"vacuna": "Polivalente", "fechaLimite": "2026-12-13"}, {"vacuna": "Rabia", \
             "fechaLimite": "2027-11-20"}], "vacunasAplicadas": ["Rabia"]}""";
 
+    /** Como lo publica Citas desde que agrega duenoNombre al resumen, junto con los exámenes. */
+    private static final String CITA_COMPLETADA_CON_NOMBRE = """
+            {"citaId": 7, "examenes": ["Hemograma", "Otoscopia"], "duenoEmail": "laura.mendez@correo.com", \
+            "diagnostico": "Otitis leve", "duenoNombre": "Laura Méndez", "mascotaNombre": "Tobby", \
+            "proximoControl": "2026-12-04", "proximasVacunas": [{"vacuna": "Polivalente", "fechaLimite": \
+            "2026-12-13"}, {"vacuna": "Rabia", "fechaLimite": "2027-11-20"}], "vacunasAplicadas": ["Rabia"]}""";
+
     private static final String VACUNA_PROXIMA = """
             {"vacuna": "Polivalente", "mascotaId": 4, "duenoEmail": "santiago.rojas@correo.com", \
             "fechaLimite": "2026-11-16", "mascotaNombre": "Max"}""";
 
+    /** Como lo publica Citas desde que agrega duenoNombre al recordatorio. */
+    private static final String VACUNA_PROXIMA_CON_NOMBRE = """
+            {"vacuna": "Rabia", "mascotaId": 4, "duenoEmail": "santiago.rojas@correo.com", \
+            "duenoNombre": "Santiago Rojas", "fechaLimite": "2026-11-16", "mascotaNombre": "Max"}""";
+
     private static final List<VacunaPendiente> PROXIMAS = List.of(
             new VacunaPendiente("Polivalente", LocalDate.of(2026, 12, 13)),
             new VacunaPendiente("Rabia", LocalDate.of(2027, 11, 20)));
+
+    /** Viernes 13 de noviembre de 2026 al mediodía en Bogotá. */
+    private final PlantillasCorreo plantillas = new PlantillasCorreo(
+            Clock.fixed(Instant.parse("2026-11-13T17:00:00Z"), ZoneId.of("America/Bogota")));
 
     @Test
     void leeLaCitaAgendadaTalComoLaPublicaCitas() {
@@ -100,14 +120,36 @@ class ContratoEventosCitasTest {
 
     @Test
     void leeElNombreDelDuenoSiCitasLoAgregaAlRecordatorio() {
-        String cuerpo = """
-                {"vacuna": "Rabia", "mascotaId": 4, "duenoEmail": "santiago.rojas@correo.com", \
-                "duenoNombre": "Santiago Rojas", "fechaLimite": "2026-11-16", "mascotaNombre": "Max"}""";
-
-        VacunaProxima evento = LectorEventos.leer(MensajesDePrueba.deCitas("vacuna.proxima", cuerpo),
-                VacunaProxima.class);
+        VacunaProxima evento = LectorEventos.leer(
+                MensajesDePrueba.deCitas("vacuna.proxima", VACUNA_PROXIMA_CON_NOMBRE), VacunaProxima.class);
 
         assertThat(evento.duenoNombre()).isEqualTo("Santiago Rojas");
+    }
+
+    @Test
+    void conDuenoNombreElResumenYElRecordatorioSaludanPorNombre() {
+        CitaCompletada cita = LectorEventos.leer(
+                MensajesDePrueba.deCitas("cita.completada", CITA_COMPLETADA_CON_NOMBRE), CitaCompletada.class);
+        VacunaProxima aviso = LectorEventos.leer(
+                MensajesDePrueba.deCitas("vacuna.proxima", VACUNA_PROXIMA_CON_NOMBRE), VacunaProxima.class);
+
+        assertThat(cita).isEqualTo(new CitaCompletada(7L, "Tobby", "laura.mendez@correo.com", "Otitis leve",
+                List.of("Rabia"), LocalDate.of(2026, 12, 4), PROXIMAS, List.of("Hemograma", "Otoscopia"),
+                "Laura Méndez"));
+        assertThat(plantillas.citaCompletada(cita).cuerpo()).startsWith("Hola, Laura Méndez:\n\n");
+        assertThat(plantillas.vacunaProxima(aviso).cuerpo()).startsWith("Hola, Santiago Rojas:\n\n");
+    }
+
+    /** Las filas que ya estaban en la outbox de Citas se publican sin duenoNombre. */
+    @Test
+    void sinDuenoNombreElResumenYElRecordatorioSaludanSinNombre() {
+        CitaCompletada cita = LectorEventos.leer(MensajesDePrueba.deCitas("cita.completada", CITA_COMPLETADA),
+                CitaCompletada.class);
+        VacunaProxima aviso = LectorEventos.leer(MensajesDePrueba.deCitas("vacuna.proxima", VACUNA_PROXIMA),
+                VacunaProxima.class);
+
+        assertThat(plantillas.citaCompletada(cita).cuerpo()).startsWith("Hola:\n\n");
+        assertThat(plantillas.vacunaProxima(aviso).cuerpo()).startsWith("Hola:\n\n");
     }
 
     @ParameterizedTest
