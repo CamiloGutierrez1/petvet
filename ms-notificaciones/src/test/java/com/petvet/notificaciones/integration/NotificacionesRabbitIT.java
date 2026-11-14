@@ -30,6 +30,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -66,6 +68,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.MountableFile;
 
 /**
  * Flujo completo con RabbitMQ y PostgreSQL reales y un SMTP en memoria (GreenMail) en un puerto
@@ -84,8 +87,17 @@ class NotificacionesRabbitIT {
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
 
+    /**
+     * Misma imagen y mismo enabled_plugins que el Compose. Si el archivo tiene un error de sintaxis, por
+     * ejemplo sin el punto final, RabbitMQ no arranca y la prueba falla. Sin rabbitmq_shovel_management
+     * falla la comprobación de que el panel carga shovel.js, el script que muestra el formulario de
+     * "Move messages"; ese plugin depende de rabbitmq_shovel, que RabbitMQ activa aunque el archivo no
+     * lo nombre.
+     */
     @Container
-    static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:3-management");
+    static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:3-management")
+            .withCopyFileToContainer(MountableFile.forHostPath(pluginsDelCompose(), 0644),
+                    "/etc/rabbitmq/enabled_plugins");
 
     @RegisterExtension
     static final GreenMailExtension SMTP = new GreenMailExtension(ServerSetupTest.SMTP.dynamicPort())
@@ -273,26 +285,36 @@ class NotificacionesRabbitIT {
         assertThat(rechazado.getMessageProperties().getMessageId()).isEqualTo(messageId);
     }
 
+    /** Los dos caminos de docs/api.md para reprocesar una DLQ: publicar el mensaje a mano y "Move messages". */
     @Test
-    void siElSmtpFallaReintentaCincoVecesYElMensajeQuedaEnLaDlqParaReprocesarlo() throws Exception {
-        doThrow(new EnvioNoDisponibleException("SMTP caído", null))
-                .when(enviador).enviar(eq("falla@example.test"), anyString(), anyString());
-        String messageId = publicar("cita.completada", citaCompletada(11, "falla@example.test"));
-
+    void siElSmtpFallaReintentaCincoVecesYLaDlqSeReprocesaAManoYConElPanel() throws Exception {
+        EnvioNoDisponibleException caido = new EnvioNoDisponibleException("SMTP caído", null);
+        doThrow(caido).when(enviador).enviar(eq("manual@example.test"), anyString(), anyString());
+        doThrow(caido).when(enviador).enviar(eq("panel@example.test"), anyString(), anyString());
+        String aMano = publicar("cita.completada", citaCompletada(11, "manual@example.test"));
         await().atMost(ESPERA).until(() -> contarMensajes(DLQ_CITAS) == 1);
-        verify(enviador, times(5)).enviar(eq("falla@example.test"), anyString(), anyString());
+        String conElPanel = publicar("cita.completada", citaCompletada(12, "panel@example.test"));
+        await().atMost(ESPERA).until(() -> contarMensajes(DLQ_CITAS) == 2);
+
+        verify(enviador, times(5)).enviar(eq("manual@example.test"), anyString(), anyString());
+        verify(enviador, times(5)).enviar(eq("panel@example.test"), anyString(), anyString());
         assertThat(contarFilas()).isZero();
         assertThat(SMTP.getReceivedMessages()).isEmpty();
 
-        // Con el SMTP de vuelta, el mensaje se mueve de la DLQ a su cola por el exchange por defecto.
+        // Con el SMTP de vuelta, el primero se publica a mano en su cola por el exchange por defecto.
         doCallRealMethod().when(enviador).enviar(anyString(), anyString(), anyString());
         Message fallido = rabbit.receive(DLQ_CITAS, 5_000);
-        assertThat(fallido.getMessageProperties().getMessageId()).isEqualTo(messageId);
+        assertThat(fallido.getMessageProperties().getMessageId()).isEqualTo(aMano);
         rabbit.send("", COLA_CITAS, fallido);
+        await().atMost(ESPERA).until(() -> contarFilas(aMano) == 1 && SMTP.getReceivedMessages().length == 1);
 
-        await().atMost(ESPERA).until(() -> contarFilas(messageId) == 1 && SMTP.getReceivedMessages().length == 1);
-        assertThat(destinatarios()).containsExactly("falla@example.test");
+        // El que queda en la DLQ se mueve con el shovel temporal que crea "Move messages" en el panel.
+        moverLaDlqDeCitasComoElPanel();
+        await().atMost(ESPERA).until(() -> contarFilas(conElPanel) == 1 && SMTP.getReceivedMessages().length == 2);
+        assertThat(destinatarios()).containsExactly("manual@example.test", "panel@example.test");
+        assertThat(contarFilas()).isEqualTo(2);
         assertThat(contarMensajes(DLQ_CITAS)).isZero();
+        await().atMost(ESPERA).until(() -> administracion("/api/parameters/shovel/%2F").isEmpty());
     }
 
     @Test
@@ -414,16 +436,65 @@ class NotificacionesRabbitIT {
 
     /** API HTTP de administración de RabbitMQ, la misma del panel 15672. */
     private JsonNode administracion(String ruta) throws Exception {
+        HttpResponse<String> respuesta = administracion("GET", ruta, null);
+        assertThat(respuesta.statusCode()).as("GET %s", ruta).isEqualTo(200);
+        return json.readTree(respuesta.body());
+    }
+
+    /**
+     * Pedido a la API de administración. El cuerpo, si lo hay, va en JSON como desde los formularios del
+     * panel, y el pedido va en HTTP/1.1 como desde el navegador: el cliente de Java intenta pasar a HTTP/2
+     * (h2c) en el primer pedido de cada conexión y RabbitMQ la cierra sin responder si ese pedido lleva cuerpo.
+     */
+    private HttpResponse<String> administracion(String metodo, String ruta, String cuerpo) throws Exception {
         String credenciales = Base64.getEncoder().encodeToString(
                 (RABBIT.getAdminUsername() + ":" + RABBIT.getAdminPassword()).getBytes(StandardCharsets.UTF_8));
         HttpRequest pedido = HttpRequest.newBuilder(URI.create(RABBIT.getHttpUrl() + ruta))
+                .version(HttpClient.Version.HTTP_1_1)
                 .header("Authorization", "Basic " + credenciales)
+                .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(10))
-                .GET()
+                .method(metodo, cuerpo == null ? HttpRequest.BodyPublishers.noBody()
+                        : HttpRequest.BodyPublishers.ofString(cuerpo, StandardCharsets.UTF_8))
                 .build();
-        HttpResponse<String> respuesta = http.send(pedido, HttpResponse.BodyHandlers.ofString());
-        assertThat(respuesta.statusCode()).as("GET %s", ruta).isEqualTo(200);
-        return json.readTree(respuesta.body());
+        return http.send(pedido, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * El mismo pedido que envía "Move messages" en la página de notificaciones.citas.dlq del panel
+     * (queue.ejs de rabbitmq_management y shovel.js de rabbitmq_shovel_management): crea un shovel
+     * temporal que mueve los mensajes que hay en la DLQ y después se borra solo. El panel manda
+     * src-consumer-args vacío cuando la cola no es un stream.
+     */
+    private void moverLaDlqDeCitasComoElPanel() throws Exception {
+        // La página de la cola muestra el formulario y el botón "Move messages" solo si
+        // rabbitmq_shovel_management carga shovel.js. Sin ese plugin el PUT funciona igual, pero el panel
+        // solo muestra un aviso para activarlo.
+        assertThat(administracion("/api/extensions").findValuesAsText("javascript")).contains("shovel.js");
+        String ruta = "/api/parameters/shovel/%2F/Move%20from%20notificaciones.citas.dlq";
+        HttpResponse<String> respuesta = administracion("PUT", ruta, """
+                {"component": "shovel", "vhost": "/", "name": "Move from notificaciones.citas.dlq", "value": {
+                "src-uri": "amqp:///%2F", "src-queue": "notificaciones.citas.dlq", "src-protocol": "amqp091",
+                "src-prefetch-count": 1000, "src-delete-after": "queue-length", "dest-protocol": "amqp091",
+                "dest-uri": "amqp:///%2F", "dest-add-forward-headers": false, "ack-mode": "on-confirm",
+                "dest-queue": "notificaciones.citas", "src-consumer-args": {}}}""");
+        assertThat(respuesta.statusCode()).as("PUT %s: %s", ruta, respuesta.body()).isEqualTo(201);
+    }
+
+    /**
+     * infra/rabbitmq/enabled_plugins, el archivo que el Compose monta en el contenedor. Failsafe corre
+     * desde la carpeta del módulo, pero se busca hacia arriba para no depender de eso.
+     */
+    private static Path pluginsDelCompose() {
+        Path inicio = Path.of("").toAbsolutePath();
+        for (Path carpeta = inicio; carpeta != null; carpeta = carpeta.getParent()) {
+            Path archivo = carpeta.resolve("infra/rabbitmq/enabled_plugins");
+            if (Files.isRegularFile(archivo)) {
+                return archivo;
+            }
+        }
+        throw new IllegalStateException("No se encontró infra/rabbitmq/enabled_plugins en " + inicio
+                + " ni en sus carpetas superiores: las pruebas deben correr dentro del repositorio.");
     }
 
     private List<String> clavesDeEnlace(String exchange, String cola) throws Exception {
