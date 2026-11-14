@@ -213,7 +213,7 @@ Todo ocurre en una transacción. Primero se inserta la fila con `INSERT ... ON C
 
 ### Correos
 
-Los correos son texto plano en UTF-8. El remitente por defecto es `PetVet <notificaciones@petvet.local>` y se cambia con `PETVET_NOTIFICACIONES_REMITENTE`. Las fechas se escriben en español y la hora usa el formato de 24 horas. `PETVET_NOTIFICACIONES_ZONA` fija la zona con que se compara la fecha de las vacunas; por defecto es `America/Bogota`.
+Los correos son texto plano en UTF-8. El remitente por defecto es `PetVet <notificaciones@petvet.local>` y se cambia con `PETVET_NOTIFICACIONES_REMITENTE`, que el Compose toma del `.env`. Las fechas se escriben en español y la hora usa el formato de 24 horas. `PETVET_NOTIFICACIONES_ZONA` fija la zona con que se compara la fecha de las vacunas; por defecto es `America/Bogota`. En el Compose toma el valor de `PETVET_AGENDA_ZONA`, así que Notificaciones usa la misma zona que Citas.
 
 | Evento | Asunto |
 | --- | --- |
