@@ -259,13 +259,13 @@ class NotificacionesRabbitIT {
     }
 
     @Test
-    void siElSmtpFallaReintentaTresVecesYElMensajeQuedaEnLaDlqParaReprocesarlo() throws Exception {
+    void siElSmtpFallaReintentaCincoVecesYElMensajeQuedaEnLaDlqParaReprocesarlo() throws Exception {
         doThrow(new EnvioNoDisponibleException("SMTP caído", null))
                 .when(enviador).enviar(eq("falla@example.test"), anyString(), anyString());
         String messageId = publicar("cita.completada", citaCompletada(11, "falla@example.test"));
 
         await().atMost(ESPERA).until(() -> contarMensajes(DLQ_CITAS) == 1);
-        verify(enviador, times(3)).enviar(eq("falla@example.test"), anyString(), anyString());
+        verify(enviador, times(5)).enviar(eq("falla@example.test"), anyString(), anyString());
         assertThat(contarFilas()).isZero();
         assertThat(SMTP.getReceivedMessages()).isEmpty();
 

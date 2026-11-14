@@ -26,11 +26,12 @@ spring:
         prefetch: 10
         # Sin esto Spring AMQP reencola sin fin el mensaje que falla. Rechazado, pasa a la DLQ de su cola.
         default-requeue-rejected: false
-        # Fallas pasajeras (SMTP o base caídos): 3 intentos, con 1 s y 2 s de espera, antes de la DLQ.
+        # Fallas pasajeras (SMTP o base caídos): 5 intentos, con esperas de 1, 2, 4 y 8 s, así que un
+        # reinicio de MailHog de hasta unos 15 s no deja correos en la DLQ.
         # Los mensajes sin messageId o con JSON inválido no se reintentan (PoliticaReintentos).
         retry:
           enabled: true
-          max-attempts: 3
+          max-attempts: 5
           initial-interval: 1s
           multiplier: 2
           max-interval: 10s

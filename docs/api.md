@@ -182,7 +182,7 @@ Las cuatro colas son durables. `petvet.notificaciones.dlx` es un exchange `direc
 - El cuerpo se lee como JSON y se ignoran los campos desconocidos. `examenes` en `cita.completada` es opcional y, si llega, se lista en el resumen. `duenoNombre` es opcional en `cita.completada` y `vacuna.proxima`. Cuando el evento lo trae, el correo saluda por nombre.
 - Una clave que no genera notificación, como `cita.cancelada`, se registra en el log y se descarta.
 - Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos.
-- Una falla pasajera, como el SMTP o la base caídos, se intenta 3 veces en total, con esperas de 1 s y 2 s. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
+- Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces en total, con esperas de 1 s, 2 s, 4 s y 8 s. Así, un reinicio de MailHog de hasta unos 15 s no deja correos sin enviar. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
 - Para reprocesar un mensaje, se publica de nuevo en su cola con las mismas propiedades, por el exchange por defecto y con el nombre de la cola como clave. Con el plugin `rabbitmq_shovel_management` activo, el panel de RabbitMQ lo hace con "Move messages". Como el mensaje conserva su `messageId`, reprocesarlo no repite un correo ya enviado.
 
 ### Deduplicación
@@ -287,4 +287,4 @@ Un límite fuera de rango responde `400` con el formato de error del servicio.
 }
 ```
 
-La salud refleja PostgreSQL y RabbitMQ. El chequeo de correo está desactivado para que una caída de MailHog no marque el servicio como caído: en ese caso los correos se reintentan y pasan a la DLQ.
+La salud refleja PostgreSQL y RabbitMQ. El chequeo de correo está desactivado para que una caída de MailHog no marque el servicio como caído: en ese caso cada correo se reintenta durante unos 15 s y, si MailHog sigue caído, pasa a la DLQ.
