@@ -89,8 +89,8 @@ Con `VITE_USE_MOCKS=true`, las funciones de `src/api` responden con los JSON de 
 **Un interruptor por servicio.** Para conectar un microservicio mientras el otro sigue simulado, define en `.env` los específicos (mandan sobre `VITE_USE_MOCKS`):
 
 ```
-VITE_USE_MOCKS_MASCOTAS=true    # Mascotas simulado (mientras Pia termina)
-VITE_USE_MOCKS_CITAS=false      # Citas contra el servicio real de Jersson
+VITE_USE_MOCKS_MASCOTAS=false   # Mascotas y Dueños real (8081)
+VITE_USE_MOCKS_CITAS=false      # Citas e Historial real (8082)
 ```
 
 Si antes levantaste la demo con `mascotas-demo`, ejecuta una vez desde la raíz `docker compose --profile app down -v --remove-orphans`: borra los datos y las colas de esa demo, y sin ese paso la primera mascota que registres (id 4) puede aparecer con citas de esa demo. Para probar con los servicios reales hay que levantar la demo desde la raíz del repo, sin el contenedor del front para no ocupar el 5173 de `npm run dev`:
@@ -103,7 +103,7 @@ Citas consulta las fichas en Mascotas y Dueños real, que trae a Tobby (1), Mish
 
 En modo mocks, lo que se registra (mascotas, citas, consultas) queda en memoria hasta recargar la página, así que se pueden probar los flujos completos.
 
-Los mocks de Citas imitan las reglas del servicio real de Jersson (`docs/api.md` y `docs/decisiones.md` en la raíz): turnos de 30 minutos de 8:00 a 18:00, sin horas pasadas, **409** si el turno ya está ocupado o si se cancela una cita completada, y **404** si el recurso no existe. Los errores simulados tienen la misma forma que los reales, así que el manejo de errores se puede probar sin el back.
+Los mocks de Citas imitan las reglas del servicio real de Jersson (`docs/api.md` y `docs/decisiones.md` en la raíz): turnos de 30 minutos dentro del horario de cada veterinario (`horaInicio` a `horaFin`), sin horas pasadas, **400** si la hora no es un turno válido, **409** si el turno o la mascota ya tienen cita a esa hora o si se cancela una cita completada, y **404** si el recurso no existe. Los mocks de Mascotas guardan el correo en minúsculas, responden **409** si se repite y dejan los opcionales vacíos en `null`, como el servicio real. Los errores simulados tienen la misma forma que los reales, así que el manejo de errores se puede probar sin el back.
 
 ### Errores de la API
 
@@ -167,7 +167,7 @@ Para que las dos mitades del front muestren fechas y textos igual:
 
 ### Tipos
 
-Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Cita`, `RegistrarConsulta`, `RegistroHistorial`, etc.). Los tipos de Citas ya están confirmados con el servicio de Jersson. Los campos de Mascotas marcados con `// confirmar con back` siguen pendientes con Pia: si cambian, se ajustan **solo ahí** y TypeScript marca todo lo que haya que corregir.
+Todo lo que viaja entre front y back está en `src/api/types.ts` (`Mascota`, `Cita`, `RegistrarConsulta`, `RegistroHistorial`, etc.). Los tipos de los dos servicios están confirmados con `docs/api.md` (PR #27 y #29): el dueño trae `documento`, `telefono` y `direccion` (texto o `null`), el veterinario su `horaInicio` y `horaFin`, y la consulta y el historial la lista `cirugias`. Si un contrato cambia, se ajusta **solo ahí** y TypeScript marca todo lo que haya que corregir.
 
 ## Rutas
 
@@ -256,14 +256,14 @@ Ejemplos: `bg-brand-soft text-primary` (enlace activo), `bg-alerta-soft text-ale
 
 ## Pendientes y coordinación
 
-| Qué                                                                                            | Quién          | Cuándo           |
-| ---------------------------------------------------------------------------------------------- | -------------- | ---------------- |
-| ~~Paleta, tipografía y logo como tokens en `src/index.css`~~ (hecho, PR #5)                    | Camilo y Daza  | Mar 10           |
-| ~~Barra superior, selector de perfil y rutas con layouts~~ (hecho, `feature/front-layout`)     | Camilo         | Mié 11           |
-| ~~Componentes compartidos (badge de estado de cita, tabla, skeletons)~~ (hecho, PR #4)         | Daza           | Mié 11           |
-| ~~Manejo global de errores (toast con el `detalle`)~~ (hecho en `src/lib/query-client.ts`)     | Daza / Camilo  | Jue 12           |
-| Cerrar los campos `// confirmar con back` de Mascotas en `types.ts` (Citas ya está confirmado) | Camilo con Pia | Antes del sáb 14 |
-| Pasar a la API real (`VITE_USE_MOCKS=false`)                                                   | Camilo y Daza  | Sáb 14           |
+| Qué                                                                                          | Quién         | Cuándo |
+| -------------------------------------------------------------------------------------------- | ------------- | ------ |
+| ~~Paleta, tipografía y logo como tokens en `src/index.css`~~ (hecho, PR #5)                  | Camilo y Daza | Mar 10 |
+| ~~Barra superior, selector de perfil y rutas con layouts~~ (hecho, `feature/front-layout`)   | Camilo        | Mié 11 |
+| ~~Componentes compartidos (badge de estado de cita, tabla, skeletons)~~ (hecho, PR #4)       | Daza          | Mié 11 |
+| ~~Manejo global de errores (toast con el `detalle`)~~ (hecho en `src/lib/query-client.ts`)   | Daza / Camilo | Jue 12 |
+| ~~Contrato final de Mascotas y Citas en `types.ts`~~ (hecho, `feature/front-contrato-final`) | Camilo        | Sáb 14 |
+| Recorrido completo contra los servicios reales (`VITE_USE_MOCKS=false`)                      | Daza          | Dom 15 |
 
 ## Flujo de Git
 

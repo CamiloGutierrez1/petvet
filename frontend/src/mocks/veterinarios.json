@@ -2,14 +2,36 @@
   {
     "id": 1,
     "nombre": "Dra. Paula Castaño",
-    "especialidad": "Medicina general"
+    "especialidad": "Medicina general",
+    "horaInicio": "08:00",
+    "horaFin": "18:00"
   },
-  { "id": 2, "nombre": "Dr. Andrés Villamil", "especialidad": "Dermatología" },
-  { "id": 3, "nombre": "Dra. Valentina Ríos", "especialidad": "Cirugía" },
-  { "id": 4, "nombre": "Dr. Julián Herrera", "especialidad": "Odontología" },
+  {
+    "id": 2,
+    "nombre": "Dr. Andrés Villamil",
+    "especialidad": "Dermatología",
+    "horaInicio": "09:00",
+    "horaFin": "17:00"
+  },
+  {
+    "id": 3,
+    "nombre": "Dra. Valentina Ríos",
+    "especialidad": "Cirugía",
+    "horaInicio": "07:00",
+    "horaFin": "13:00"
+  },
+  {
+    "id": 4,
+    "nombre": "Dr. Julián Herrera",
+    "especialidad": "Odontología",
+    "horaInicio": "13:00",
+    "horaFin": "19:00"
+  },
   {
     "id": 5,
     "nombre": "Dra. Sofía Cárdenas",
-    "especialidad": "Medicina felina"
+    "especialidad": "Medicina felina",
+    "horaInicio": "10:00",
+    "horaFin": "16:00"
   }
 ]

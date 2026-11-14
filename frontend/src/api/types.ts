@@ -11,11 +11,15 @@ export type TipoServicio =
 
 // ---------- ms-mascotas-duenos (8081) ----------
 
+// Contrato confirmado en docs/api.md (PR #27). Los opcionales llegan como null.
+
 export interface Dueno {
   id: number
   nombre: string
+  documento: string | null
   email: string
-  telefono?: string // confirmar con back
+  telefono: string | null // solo dígitos, entre 7 y 10
+  direccion: string | null
 }
 
 export interface Mascota {
@@ -24,23 +28,31 @@ export interface Mascota {
   especie: Especie
   raza: string
   fechaNacimiento: string // ISO, ej. "2021-04-18"
-  peso: number // kg
-  fotoUrl?: string
+  peso: number // kg, hasta 3 decimales
+  /** Relativa al front en los datos de ejemplo; absoluta al 8081 si se subió una foto. */
+  fotoUrl: string | null
   duenoId: number
 }
 
 /** GET /api/mascotas/{id}: la ficha incluye nombre y correo del dueño. */
 export interface MascotaDetalle extends Mascota {
-  duenoNombre: string // confirmar con back
-  duenoEmail: string // confirmar con back
+  duenoNombre: string
+  duenoEmail: string
 }
 
-export type NuevoDueno = Omit<Dueno, "id">
+/** POST /api/duenos: los opcionales se pueden omitir. */
+export interface NuevoDueno {
+  nombre: string
+  email: string
+  documento?: string
+  telefono?: string
+  direccion?: string
+}
 export type NuevaMascota = Omit<Mascota, "id" | "duenoId" | "fotoUrl">
 export type EditarMascota = NuevaMascota
 
 // ---------- ms-citas-historial (8082) ----------
-// Contrato confirmado por Jersson en docs/api.md (PR #2).
+// Contrato confirmado por Jersson en docs/api.md (PR #2 y #29).
 
 export type TipoConsulta = "GENERAL" | "ESPECIALISTA"
 
@@ -48,6 +60,8 @@ export interface Veterinario {
   id: number
   nombre: string
   especialidad: string
+  horaInicio: string // "HH:mm", ej. "08:00"
+  horaFin: string // "HH:mm", ej. "18:00"
 }
 
 export interface Cita {
@@ -70,7 +84,7 @@ export interface NuevaCita {
 
 /**
  * GET /api/veterinarios/{id}/disponibilidad?fecha=2026-11-20
- * Turnos libres de 30 min entre 8:00 y 18:00, sin horas pasadas.
+ * Turnos libres de 30 min dentro del horario del veterinario, sin horas pasadas.
  */
 export interface Disponibilidad {
   veterinarioId: number
@@ -85,6 +99,7 @@ export interface RegistrarConsulta {
   vacunasAplicadas?: string[]
   tratamientos?: string[]
   examenes?: string[]
+  cirugias?: string[]
   observaciones?: string
   proximoControl?: string // "2026-12-04", hoy o después
 }
@@ -101,6 +116,7 @@ export interface RegistroHistorial {
   vacunasAplicadas: string[]
   tratamientos: string[]
   examenes: string[]
+  cirugias: string[]
   observaciones: string | null
   proximoControl: string | null
 }
@@ -111,13 +127,13 @@ export interface ProximaVacuna {
   fechaLimite: string // "2026-12-12"
 }
 
-// ---------- Errores (comunes a los dos servicios) ----------
+// ---------- Errores (comunes a los servicios) ----------
 
-/** Código en el campo `error` (confirmado en Citas; Mascotas por confirmar con Pia). */
+/** Código en el campo `error`, igual en los tres servicios. */
 export type CodigoError =
   | "DATOS_INVALIDOS" // 400
   | "RECURSO_NO_ENCONTRADO" // 404
-  | "CONFLICTO" // 409: horario ocupado o estado incompatible
+  | "CONFLICTO" // 409: turno ocupado, correo repetido o estado incompatible
   | "DEPENDENCIA_NO_DISPONIBLE" // 503: otro microservicio no responde
   | "ERROR_INTERNO" // 500
 
