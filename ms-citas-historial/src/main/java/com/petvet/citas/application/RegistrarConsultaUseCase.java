@@ -75,9 +75,9 @@ public class RegistrarConsultaUseCase {
         citas.guardar(new Cita(cita.id(), cita.mascotaId(), cita.veterinarioId(), cita.fechaHora(),
                 cita.tipoServicio(), EstadoCita.COMPLETADA, cita.duracionMinutos()));
         var vacunas = selector.proximasVacunas(mascota, historiales.porMascota(cita.mascotaId()), hoy);
-        eventos.citaCompletada(new CitaCompletadaEvento(cita.id(), mascota.nombre(), mascota.duenoEmail(),
-                registro.diagnostico(), registro.vacunasAplicadas(), registro.proximoControl(), vacunas,
-                registro.examenes()));
+        eventos.citaCompletada(new CitaCompletadaEvento(cita.id(), mascota.nombre(), mascota.duenoNombre(),
+                mascota.duenoEmail(), registro.diagnostico(), registro.vacunasAplicadas(),
+                registro.proximoControl(), vacunas, registro.examenes()));
         return registro;
     }
 

@@ -163,7 +163,7 @@ class RegistrarConsultaUseCaseTest {
         assertThat(transacciones.abiertas()).isEqualTo(1);
         assertThat(completada.getValue().estado()).isEqualTo(EstadoCita.COMPLETADA);
         assertThat(completada.getValue().duracionMinutos()).isEqualTo(60);
-        assertThat(evento.getValue()).isEqualTo(new CitaCompletadaEvento(42L, "Luna demo",
+        assertThat(evento.getValue()).isEqualTo(new CitaCompletadaEvento(42L, "Luna demo", "Dueño demo",
                 "dueno@example.test", "Diagnóstico demo", List.of("Rabia"), HOY.plusDays(14),
                 List.of(new VacunaPendiente("Triple felina", LocalDate.of(2025, 5, 1)),
                         new VacunaPendiente("Rabia", HOY.plusMonths(12))),

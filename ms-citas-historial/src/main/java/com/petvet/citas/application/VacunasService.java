@@ -61,7 +61,7 @@ public class VacunasService {
             return;
         }
         transacciones.executeWithoutResult(estado -> porAvisar.forEach(vacuna ->
-                eventos.vacunaProxima(new VacunaProximaEvento(mascotaId, mascota.nombre(), mascota.duenoEmail(),
-                        vacuna.vacuna(), vacuna.fechaLimite()))));
+                eventos.vacunaProxima(new VacunaProximaEvento(mascotaId, mascota.nombre(), mascota.duenoNombre(),
+                        mascota.duenoEmail(), vacuna.vacuna(), vacuna.fechaLimite()))));
     }
 }

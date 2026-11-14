@@ -382,7 +382,7 @@ class CitasApiIT {
                 "SELECT jsonb_object_keys(payload) FROM outbox_eventos WHERE clave_deduplicacion = ?",
                 String.class, "cita.completada:" + id))
                 .as("las cirugías no viajan en cita.completada")
-                .containsExactlyInAnyOrder("citaId", "mascotaNombre", "duenoEmail", "diagnostico",
+                .containsExactlyInAnyOrder("citaId", "mascotaNombre", "duenoNombre", "duenoEmail", "diagnostico",
                         "vacunasAplicadas", "proximoControl", "proximasVacunas", "examenes");
     }
 

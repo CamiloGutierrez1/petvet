@@ -199,6 +199,8 @@ class OutboxRabbitIT {
         assertThat(mensaje.getProps().getType()).isEqualTo("cita.completada");
         JsonNode contenido = objectMapper.readTree(mensaje.getBody());
         assertThat(contenido.path("citaId").asLong()).isEqualTo(citaId);
+        assertThat(contenido.path("duenoNombre").asText()).isEqualTo("Dueño Demo");
+        assertThat(contenido.path("duenoEmail").asText()).isEqualTo("demo@example.test");
         assertThat(contenido.path("diagnostico").asText()).isEqualTo("Otitis leve");
         assertThat(contenido.path("examenes")).extracting(JsonNode::asText)
                 .containsExactly("Otoscopia", "Hemograma");
@@ -232,6 +234,7 @@ class OutboxRabbitIT {
         var contenido = objectMapper.readTree(recordatorio.getBody());
         assertThat(contenido.path("mascotaId").asLong()).isEqualTo(3);
         assertThat(contenido.path("mascotaNombre").asText()).isEqualTo("Cachorro Demo");
+        assertThat(contenido.path("duenoNombre").asText()).isEqualTo("Dueño Demo");
         assertThat(contenido.path("duenoEmail").asText()).isEqualTo("demo@example.test");
         assertThat(contenido.path("vacuna").asText()).isEqualTo("Polivalente");
         assertThat(contenido.path("fechaLimite").asText()).isEqualTo(vencimiento.toString());
