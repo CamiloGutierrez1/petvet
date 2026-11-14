@@ -80,7 +80,8 @@ def main():
         if codigo != 250:
             raise RuntimeError("El SMTP de MailHog no responde correctamente")
     print("OK MailHog — API y SMTP local", flush=True)
-    print("Salud e infraestructura verificadas. Use probar_citas.py para comprobar la API de negocio en modo demo.")
+    print("Salud e infraestructura verificadas. Para recorrer el flujo de negocio con los tres servicios y "
+          "MailHog, levante el Compose de demo y use probar_citas.py.")
 
 
 if __name__ == "__main__":

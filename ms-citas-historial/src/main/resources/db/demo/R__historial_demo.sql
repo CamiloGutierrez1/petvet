@@ -2,7 +2,8 @@
 --
 -- Solo se carga cuando Flyway incluye classpath:db/demo (docker-compose.demo.yml lo hace; en el
 -- Compose principal se activa con PETVET_CITAS_MIGRACIONES). Las mascotas 1, 2 y 3 son Tobby,
--- Misha y Kiwi, las mismas de frontend/src/mocks/mascotas.json y scripts/mascotas_demo.py.
+-- Misha y Kiwi, las mismas de frontend/src/mocks/mascotas.json y de los datos iniciales de
+-- Mascotas y Dueños.
 --
 -- Las fechas se calculan al aplicar el archivo para que las vacunas queden al día: los refuerzos
 -- vencen en uno a tres meses en lugar de aparecer vencidos desde hace años.
