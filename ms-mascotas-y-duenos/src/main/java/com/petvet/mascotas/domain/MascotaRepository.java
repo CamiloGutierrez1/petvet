@@ -1,23 +1,25 @@
+package com.petvet.mascotas.domain;
+
 import java.util.List;
 import java.util.Optional;
 
 public interface MascotaRepository {
 
-    // Register a new pet or save changes
+    // Registrar un nuevo mascota o guardar las actualizaciones
     Mascota guardar(Mascota mascota);
 
-    // Find a pet using its ID
+    // Buscar un mascota usando su ID
     Optional<Mascota> buscarPorId(Long id);
 
-    // Find all pets belonging to an owner
+    // Buscar un mascota usando el ID del dueño
     List<Mascota> buscarPorDueno(Long duenoId);
 
-    // List all registered pets
+    // Listar todos los mascotas registrados
     List<Mascota> listarTodas();
 
-    // Update pet information
+    // Actualizar la informacion del mascota
     Mascota actualizar(Mascota mascota);
 
-    // Delete a pet using its ID
+    // Eliminar un mascota usando su ID
     void eliminar(Long id);
 }
