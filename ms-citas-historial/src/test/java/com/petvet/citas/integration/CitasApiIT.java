@@ -105,6 +105,12 @@ class CitasApiIT {
         assertThat(veterinarios.cuerpo().size()).isEqualTo(5);
         assertThat(veterinarios.cuerpo().get(0).path("id").asLong()).isEqualTo(1);
         assertThat(veterinarios.cuerpo().get(0).path("nombre").asText()).isEqualTo("Dra. Paula Castaño");
+        assertThat(veterinarios.cuerpo().get(0).path("horaInicio").asText()).isEqualTo("08:00");
+        assertThat(veterinarios.cuerpo().get(0).path("horaFin").asText()).isEqualTo("18:00");
+        assertThat(veterinarios.cuerpo().findValuesAsText("horaInicio")).hasSize(5)
+                .allMatch(hora -> hora.matches("\\d{2}:\\d{2}"));
+        assertThat(veterinarios.cuerpo().findValuesAsText("horaFin")).hasSize(5)
+                .allMatch(hora -> hora.matches("\\d{2}:\\d{2}"));
         assertThat(veterinarios.cuerpo().findValuesAsText("especialidad"))
                 .contains("Cirugía", "Odontología")
                 .noneMatch(especialidad -> especialidad.isBlank());
@@ -117,6 +123,39 @@ class CitasApiIT {
         assertThat(disponibilidad.cuerpo().path("horarios").size()).isEqualTo(20);
         assertThat(LocalDateTime.parse(disponibilidad.cuerpo().path("horarios").get(0).asText()))
                 .isEqualTo(fecha.atTime(8, 0));
+    }
+
+    @Test
+    void cadaVeterinarioAtiendeSoloDentroDeSuHorario() throws Exception {
+        var cirujana = consultar("GET", "/api/veterinarios", null).cuerpo().get(2);
+        assertThat(cirujana.path("nombre").asText()).isEqualTo("Dra. Valentina Ríos");
+        assertThat(cirujana.path("horaInicio").asText()).isEqualTo("07:00");
+        assertThat(cirujana.path("horaFin").asText()).isEqualTo("13:00");
+
+        var manana = consultar("GET", "/api/veterinarios/3/disponibilidad?fecha=" + fecha, null)
+                .cuerpo().path("horarios");
+        assertThat(manana.size()).isEqualTo(12);
+        assertThat(LocalDateTime.parse(manana.get(0).asText())).isEqualTo(fecha.atTime(7, 0));
+        assertThat(LocalDateTime.parse(manana.get(11).asText())).isEqualTo(fecha.atTime(12, 30));
+        for (LocalDateTime fuera : List.of(fecha.atTime(6, 30), fecha.atTime(13, 0))) {
+            var rechazada = agendar(3, 3, fuera);
+            assertError(rechazada, 400);
+            assertThat(rechazada.cuerpo().path("error").asText()).isEqualTo("DATOS_INVALIDOS");
+            assertThat(rechazada.cuerpo().path("detalle").asText()).as(fuera.toString())
+                    .isEqualTo("La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00");
+        }
+        assertThat(agendar(3, 3, fecha.atTime(7, 0)).estado()).isEqualTo(201);
+        assertThat(agendar(4, 3, fecha.atTime(12, 30)).estado()).isEqualTo(201);
+
+        // La tarde del Dr. Julián Herrera pasa del horario general (08:00 a 18:00): manda el del veterinario.
+        var tarde = consultar("GET", "/api/veterinarios/4/disponibilidad?fecha=" + fecha, null)
+                .cuerpo().path("horarios");
+        assertThat(tarde.size()).isEqualTo(12);
+        assertThat(LocalDateTime.parse(tarde.get(0).asText())).isEqualTo(fecha.atTime(13, 0));
+        assertThat(agendar(5, 4, fecha.atTime(18, 30)).estado()).isEqualTo(201);
+        assertThat(agendar(5, 4, fecha.atTime(12, 30)).cuerpo().path("detalle").asText())
+                .contains("13:00 a 19:00");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM citas", Long.class)).isEqualTo(3);
     }
 
     @Test

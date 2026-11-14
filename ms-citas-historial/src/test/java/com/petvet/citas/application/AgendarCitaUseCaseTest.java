@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -23,10 +26,12 @@ import com.petvet.citas.domain.Veterinario;
 import com.petvet.citas.domain.eventos.CitaAgendadaEvento;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -34,7 +39,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AgendarCitaUseCaseTest {
 
     private static final LocalDateTime FECHA = LocalDateTime.of(2026, 11, 20, 9, 30);
-    private static final Veterinario VETERINARIO = new Veterinario(2L, "Veterinario demo", "General");
+    private static final Veterinario VETERINARIO = new Veterinario(2L, "Veterinario demo", "General",
+            LocalTime.of(7, 0), LocalTime.of(13, 0));
     private static final Mascota MASCOTA = new Mascota(3L, "Luna demo", Especie.GATO,
             LocalDate.of(2024, 5, 1), "Dueño demo", "dueno@example.test");
 
@@ -49,7 +55,7 @@ class AgendarCitaUseCaseTest {
     void prepararCasoDeUso() {
         agendar = new AgendarCitaUseCase(citas, mascotas, agenda, eventos, transacciones);
         when(agenda.veterinario(2L)).thenReturn(VETERINARIO);
-        when(agenda.duracionMinutos()).thenReturn(30);
+        lenient().when(agenda.duracionMinutos()).thenReturn(30);
     }
 
     @Test
@@ -60,9 +66,24 @@ class AgendarCitaUseCaseTest {
                 .isInstanceOf(ConflictoException.class)
                 .hasMessageContaining("veterinario");
 
-        verify(agenda).validarHorario(FECHA);
+        InOrder orden = inOrder(agenda);
+        orden.verify(agenda).veterinario(2L);
+        orden.verify(agenda).validarHorario(VETERINARIO, FECHA);
         verify(citas, never()).guardar(any());
         verifyNoInteractions(mascotas, eventos);
+        assertThat(transacciones.abiertas()).isZero();
+    }
+
+    @Test
+    void unaHoraFueraDelHorarioDelVeterinarioNoRevisaTurnosNiEscribe() {
+        doThrow(new IllegalArgumentException("La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00"))
+                .when(agenda).validarHorario(VETERINARIO, FECHA);
+
+        assertThatThrownBy(() -> agendar.ejecutar(3L, 2L, FECHA, TipoServicio.CONSULTA_GENERAL))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("07:00 a 13:00");
+
+        verifyNoInteractions(citas, mascotas, eventos);
         assertThat(transacciones.abiertas()).isZero();
     }
 

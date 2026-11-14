@@ -2,6 +2,7 @@ package com.petvet.citas.application;
 
 import com.petvet.citas.domain.*;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,9 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AgendaService {
+    private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
+
     private final VeterinarioRepository veterinarios;
     private final CitaRepository citas;
     private final Clock clock;
+    // Horario general de la clínica: se aplica a los veterinarios que no tienen horario propio.
     private final LocalTime apertura;
     private final LocalTime cierre;
     private final int duracionMinutos;
@@ -39,42 +43,54 @@ public class AgendaService {
         return duracionMinutos;
     }
 
+    /** Cada veterinario con su horario de atención; si no tiene uno propio, con el general. */
     public List<Veterinario> veterinarios() {
-        return veterinarios.listar();
+        return veterinarios.listar().stream().map(this::conHorario).toList();
     }
 
     public Veterinario veterinario(long id) {
-        return veterinarios.buscarPorId(id)
+        return veterinarios.buscarPorId(id).map(this::conHorario)
                 .orElseThrow(() -> new RecursoNoEncontradoException("El veterinario no existe"));
     }
 
-    public void validarHorario(LocalDateTime fechaHora) {
+    /**
+     * Exige una fecha y hora futura que sea el inicio de un turno completo dentro del horario del
+     * veterinario. Los turnos se cuentan desde su hora de inicio.
+     */
+    public void validarHorario(Veterinario veterinario, LocalDateTime fechaHora) {
         if (fechaHora == null || !fechaHora.isAfter(LocalDateTime.now(clock))) {
             throw new IllegalArgumentException("La cita debe tener una fecha y hora futura");
         }
         validarFecha(fechaHora.toLocalDate());
-        LocalDateTime inicio = fechaHora.toLocalDate().atTime(apertura);
-        LocalDateTime fin = fechaHora.toLocalDate().atTime(cierre);
+        Veterinario conHorario = conHorario(veterinario);
+        LocalDateTime inicio = fechaHora.toLocalDate().atTime(conHorario.horaInicio());
+        LocalDateTime fin = fechaHora.toLocalDate().atTime(conHorario.horaFin());
+        if (fechaHora.isBefore(inicio) || fechaHora.plusMinutes(duracionMinutos).isAfter(fin)) {
+            throw new IllegalArgumentException("La cita debe quedar dentro del horario del veterinario, de "
+                    + HORA.format(conHorario.horaInicio()) + " a " + HORA.format(conHorario.horaFin()));
+        }
         long minutos = Duration.between(inicio, fechaHora).toMinutes();
-        if (fechaHora.isBefore(inicio) || fechaHora.plusMinutes(duracionMinutos).isAfter(fin)
-                || fechaHora.getSecond() != 0 || fechaHora.getNano() != 0 || minutos % duracionMinutos != 0) {
-            throw new IllegalArgumentException("La hora debe coincidir con un turno disponible dentro del horario de atención");
+        if (fechaHora.getSecond() != 0 || fechaHora.getNano() != 0 || minutos % duracionMinutos != 0) {
+            throw new IllegalArgumentException("La hora debe coincidir con el inicio de un turno: hay turnos cada "
+                    + duracionMinutos + " minutos desde las " + HORA.format(conHorario.horaInicio()));
         }
     }
 
     @Transactional(readOnly = true)
     public Disponibilidad disponibilidad(long veterinarioId, LocalDate fecha) {
         validarFecha(fecha);
-        veterinario(veterinarioId);
+        Veterinario veterinario = veterinario(veterinarioId);
         if (fecha.isBefore(LocalDate.now(clock))) {
             return new Disponibilidad(veterinarioId, fecha, List.of());
         }
         var ocupadas = citas.agenda(veterinarioId, fecha).stream()
                 .filter(cita -> cita.estado() != EstadoCita.CANCELADA).toList();
-        int turnos = (int) Duration.between(apertura, cierre).toMinutes() / duracionMinutos;
+        LocalDateTime inicio = fecha.atTime(veterinario.horaInicio());
+        int turnos = (int) Duration.between(veterinario.horaInicio(), veterinario.horaFin()).toMinutes()
+                / duracionMinutos;
         LocalDateTime ahora = LocalDateTime.now(clock);
         List<LocalDateTime> horarios = IntStream.range(0, turnos)
-                .mapToObj(turno -> fecha.atTime(apertura).plusMinutes((long) turno * duracionMinutos))
+                .mapToObj(turno -> inicio.plusMinutes((long) turno * duracionMinutos))
                 .filter(hora -> hora.isAfter(ahora))
                 .filter(hora -> ocupadas.stream().noneMatch(cita ->
                         hora.isBefore(cita.fechaHora().plusMinutes(cita.duracionMinutos()))
@@ -107,6 +123,10 @@ public class AgendaService {
             return citas.agenda(veterinarioId, fecha);
         }
         throw new IllegalArgumentException("Use mascotaId, veterinarioId o la combinación veterinarioId y fecha");
+    }
+
+    private Veterinario conHorario(Veterinario veterinario) {
+        return veterinario.conHorarioPorDefecto(apertura, cierre);
     }
 
     private void validarFecha(LocalDate fecha) {

@@ -32,8 +32,8 @@ public class AgendarCitaUseCase {
         if (mascotaId <= 0 || veterinarioId <= 0 || tipoServicio == null) {
             throw new IllegalArgumentException("La mascota, el veterinario y el tipo de servicio son obligatorios");
         }
-        agenda.validarHorario(fechaHora);
         Veterinario veterinario = agenda.veterinario(veterinarioId);
+        agenda.validarHorario(veterinario, fechaHora);
         int duracionMinutos = agenda.duracionMinutos();
         if (citas.horarioOcupado(veterinarioId, fechaHora, duracionMinutos)) {
             throw new ConflictoException("El veterinario ya tiene una cita en ese horario");

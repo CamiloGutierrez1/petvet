@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -93,7 +94,87 @@ class AgendaServiceTest {
         verifyNoInteractions(citas, veterinarios);
     }
 
+    @Test
+    void laDisponibilidadSigueElHorarioDelVeterinario() {
+        when(veterinarios.buscarPorId(3L)).thenReturn(Optional.of(cirujana()));
+        when(citas.agenda(3L, FECHA)).thenReturn(List.of(new Cita(8L, 4L, 3L, FECHA.atTime(8, 0),
+                TipoServicio.ESPECIALISTA, EstadoCita.AGENDADA)));
+
+        List<LocalDateTime> horarios = agenda.disponibilidad(3L, FECHA).horarios();
+
+        assertThat(horarios).hasSize(11).doesNotContain(FECHA.atTime(8, 0));
+        assertThat(horarios.getFirst()).isEqualTo(FECHA.atTime(7, 0));
+        assertThat(horarios.getLast()).isEqualTo(FECHA.atTime(12, 30));
+    }
+
+    @Test
+    void unVeterinarioSinHorarioPropioAtiendeEnElHorarioGeneral() {
+        when(veterinarios.buscarPorId(1L)).thenReturn(Optional.of(veterinario()));
+        when(citas.agenda(1L, FECHA)).thenReturn(List.of());
+
+        List<LocalDateTime> horarios = agenda.disponibilidad(1L, FECHA).horarios();
+
+        assertThat(horarios).hasSize(20);
+        assertThat(horarios.getFirst()).isEqualTo(FECHA.atTime(8, 0));
+        assertThat(horarios.getLast()).isEqualTo(FECHA.atTime(17, 30));
+    }
+
+    @Test
+    void elListadoCompletaElHorarioGeneralSoloDondeFalta() {
+        when(veterinarios.listar()).thenReturn(List.of(veterinario(), cirujana()));
+
+        assertThat(agenda.veterinarios()).containsExactly(
+                new Veterinario(1L, "Dra. Paula Castaño", "Medicina general", LocalTime.of(8, 0), LocalTime.of(18, 0)),
+                cirujana());
+    }
+
+    @Test
+    void aceptaElPrimerYElUltimoTurnoDelHorarioDelVeterinario() {
+        agenda.validarHorario(cirujana(), FECHA.atTime(7, 0));
+        agenda.validarHorario(cirujana(), FECHA.atTime(12, 30));
+    }
+
+    @Test
+    void rechazaHorasFueraDelHorarioDelVeterinarioNombrandoSuHorario() {
+        for (LocalDateTime hora : List.of(FECHA.atTime(6, 30), FECHA.atTime(12, 45), FECHA.atTime(13, 0),
+                FECHA.atTime(16, 0))) {
+            assertThatThrownBy(() -> agenda.validarHorario(cirujana(), hora))
+                    .as(hora.toString())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00");
+        }
+    }
+
+    @Test
+    void rechazaHorasQueNoCoincidenConElInicioDeUnTurno() {
+        assertThatThrownBy(() -> agenda.validarHorario(cirujana(), FECHA.atTime(7, 15)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("La hora debe coincidir con el inicio de un turno: hay turnos cada 30 minutos desde las 07:00");
+        assertThatThrownBy(() -> agenda.validarHorario(cirujana(), FECHA.atTime(9, 0, 30)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void sinHorarioPropioValidaContraElHorarioGeneral() {
+        agenda.validarHorario(veterinario(), FECHA.atTime(17, 30));
+
+        assertThatThrownBy(() -> agenda.validarHorario(veterinario(), FECHA.atTime(18, 0)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("La cita debe quedar dentro del horario del veterinario, de 08:00 a 18:00");
+    }
+
+    @Test
+    void rechazaUnaFechaPasadaAntesDeRevisarElHorario() {
+        assertThatThrownBy(() -> agenda.validarHorario(cirujana(), LocalDateTime.of(2026, 11, 12, 9, 0)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("La cita debe tener una fecha y hora futura");
+    }
+
     private static Veterinario veterinario() {
         return new Veterinario(1L, "Dra. Paula Castaño", "Medicina general");
+    }
+
+    private static Veterinario cirujana() {
+        return new Veterinario(3L, "Dra. Valentina Ríos", "Cirugía", LocalTime.of(7, 0), LocalTime.of(13, 0));
     }
 }

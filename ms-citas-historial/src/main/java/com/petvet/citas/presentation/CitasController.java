@@ -3,12 +3,14 @@ package com.petvet.citas.presentation;
 import com.petvet.citas.application.*;
 import com.petvet.citas.domain.*;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -40,8 +42,10 @@ public class CitasController {
     }
 
     @GetMapping("/veterinarios")
-    public List<Veterinario> veterinarios() {
-        return agenda.veterinarios();
+    @Operation(summary = "Listar veterinarios", description = "Incluye el horario de atención de cada uno, "
+            + "igual todos los días, en formato HH:mm.")
+    public List<VeterinarioRespuesta> veterinarios() {
+        return agenda.veterinarios().stream().map(VeterinarioRespuesta::de).toList();
     }
 
     @GetMapping("/veterinarios/{id}/disponibilidad")
@@ -96,6 +100,17 @@ public class CitasController {
     @Operation(summary = "Consultar vacunas de demostración", description = "Calendarios académicos ficticios por especie y edad.")
     public List<VacunaPendiente> proximasVacunas(@PathVariable @Positive(message = POSITIVO) long id) {
         return vacunas.proximas(id);
+    }
+
+    /** Veterinario con su horario de atención, que es el mismo todos los días. */
+    public record VeterinarioRespuesta(Long id, String nombre, String especialidad,
+            @Schema(example = "08:00") String horaInicio, @Schema(example = "18:00") String horaFin) {
+        private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
+
+        static VeterinarioRespuesta de(Veterinario veterinario) {
+            return new VeterinarioRespuesta(veterinario.id(), veterinario.nombre(), veterinario.especialidad(),
+                    HORA.format(veterinario.horaInicio()), HORA.format(veterinario.horaFin()));
+        }
     }
 
     public record NuevaCita(
