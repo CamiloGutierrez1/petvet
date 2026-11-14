@@ -292,6 +292,39 @@ class MascotasApiIT {
     }
 
     @Test
+    void laFotoSeRevalidaConLaEtagDeSuVersionYSinCambiosRespondeNoModificada() throws Exception {
+        byte[] png = imagen("png");
+        String fotoUrl = subirFoto(3, "foto", "image/png", png).cuerpo().path("fotoUrl").asText();
+        // La ETag es la versión guardada en foto_version, la misma del parámetro v de la fotoUrl.
+        String version = URI.create(fotoUrl).getRawQuery().replace("v=", "");
+        assertThat(jdbc.queryForObject("SELECT foto_version FROM mascotas WHERE id = 3", Long.class))
+                .hasToString(version);
+        String etag = "\"" + version + "\"";
+
+        var descarga = descargar(rutaDe(fotoUrl));
+        assertThat(descarga.statusCode()).isEqualTo(200);
+        assertThat(descarga.headers().firstValue("ETag")).hasValue(etag);
+        assertThat(descarga.headers().firstValue("Cache-Control")).hasValue("no-cache");
+        assertThat(descarga.body()).isEqualTo(png);
+
+        var revalidada = descargar(rutaDe(fotoUrl), etag);
+        assertThat(revalidada.statusCode()).isEqualTo(304);
+        assertThat(revalidada.headers().firstValue("ETag")).hasValue(etag);
+        assertThat(revalidada.headers().firstValue("Cache-Control")).hasValue("no-cache");
+        assertThat(revalidada.body()).isEmpty();
+
+        // Otra subida cambia la versión: la ETag que guardaba el navegador ya no coincide y llegan los bytes nuevos.
+        byte[] jpg = imagen("jpg");
+        String nuevaUrl = subirFoto(3, "foto", "image/jpeg", jpg).cuerpo().path("fotoUrl").asText();
+        String nuevaEtag = "\"" + URI.create(nuevaUrl).getRawQuery().replace("v=", "") + "\"";
+        assertThat(nuevaEtag).isNotEqualTo(etag);
+        var cambiada = descargar(rutaDe(nuevaUrl), etag);
+        assertThat(cambiada.statusCode()).isEqualTo(200);
+        assertThat(cambiada.headers().firstValue("ETag")).hasValue(nuevaEtag);
+        assertThat(cambiada.body()).isEqualTo(jpg);
+    }
+
+    @Test
     void rechazaFotosQueNoSonImagenesPesanMasDe5MBONoVienenEnElCampoFoto() throws Exception {
         byte[] png = imagen("png");
         assertError(subirFoto(1, "foto", "text/plain", "hola".getBytes(StandardCharsets.UTF_8)), 400, NO_ES_IMAGEN);
@@ -509,12 +542,19 @@ class MascotasApiIT {
     }
 
     private HttpResponse<byte[]> descargar(String ruta) throws Exception {
-        return http.send(HttpRequest.newBuilder(uri(ruta))
+        return descargar(ruta, null);
+    }
+
+    /** Con etag, revalida la foto como el navegador que ya la tiene guardada. */
+    private HttpResponse<byte[]> descargar(String ruta, String etag) throws Exception {
+        var solicitud = HttpRequest.newBuilder(uri(ruta))
                 .timeout(Duration.ofSeconds(10))
                 // El mismo Accept que envía el navegador al cargar una etiqueta img.
-                .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-                .GET()
-                .build(), HttpResponse.BodyHandlers.ofByteArray());
+                .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
+        if (etag != null) {
+            solicitud.header("If-None-Match", etag);
+        }
+        return http.send(solicitud.GET().build(), HttpResponse.BodyHandlers.ofByteArray());
     }
 
     private Respuesta enviar(HttpRequest.Builder request) throws Exception {

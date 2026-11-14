@@ -1,6 +1,7 @@
 package com.petvet.mascotas.infrastructure.persistence;
 
 import com.petvet.mascotas.domain.AlmacenFotosMascota;
+import com.petvet.mascotas.domain.FotoGuardada;
 import com.petvet.mascotas.domain.FotoMascota;
 import com.petvet.mascotas.domain.RecursoNoEncontradoException;
 import jakarta.persistence.EntityManager;
@@ -41,7 +42,7 @@ public class JpaAlmacenFotosMascota implements AlmacenFotosMascota {
     }
 
     @Override
-    public Optional<FotoMascota> buscarFoto(long mascotaId) {
+    public Optional<FotoGuardada> buscarFoto(long mascotaId) {
         return fotos.findById(mascotaId).map(FotoMascotaEntity::aDominio);
     }
 }

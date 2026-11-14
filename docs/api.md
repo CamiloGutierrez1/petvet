@@ -90,6 +90,7 @@ Cuerpo `DatosMascota` de `POST /api/duenos/{id}/mascotas` y de `PUT /api/mascota
 - La respuesta trae `fotoUrl` absoluta, por ejemplo `http://localhost:8081/api/mascotas/4/foto?v=1763078400000`. La base sale de `PETVET_FOTOS_URL_BASE`, por defecto `http://localhost:8081`, que es la dirección con la que el navegador llega al servicio. La versión evita que el navegador muestre la foto anterior.
 - Las mascotas de ejemplo tienen `fotoUrl` relativa al frontend, como `/mascotas/tobby.jpg`, hasta que se les sube una foto.
 - `GET /api/mascotas/{id}/foto` responde `404` si la mascota no tiene una foto subida.
+- La foto se sirve con `Cache-Control: no-cache` y una `ETag` igual a su versión. El navegador la guarda y la revalida con `If-None-Match`: si no cambió, recibe `304` sin los bytes.
 
 #### Errores de Mascotas y Dueños
 

@@ -13,5 +13,6 @@ public interface AlmacenFotosMascota {
      */
     void actualizarFoto(long mascotaId, FotoMascota foto, long versionPropuesta);
 
-    Optional<FotoMascota> buscarFoto(long mascotaId);
+    /** La foto subida con su versión, leídas juntas: la versión corresponde siempre a esos bytes. */
+    Optional<FotoGuardada> buscarFoto(long mascotaId);
 }
