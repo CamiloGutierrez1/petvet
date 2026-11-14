@@ -4,7 +4,7 @@ COPY pom.xml ./
 COPY ms-citas-historial/pom.xml ms-citas-historial/pom.xml
 COPY ms-citas-historial/src ms-citas-historial/src
 RUN --mount=type=cache,id=petvet-maven,target=/root/.m2,sharing=locked \
-    mvn -B -ntp -pl ms-citas-historial -am -DskipTests package
+    mvn -B -ntp -f ms-citas-historial/pom.xml -DskipTests package
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
