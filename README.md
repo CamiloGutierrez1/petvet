@@ -95,4 +95,4 @@ Con el Compose de demo, `python3 scripts/probar_citas.py` completó el recorrido
 
 ## Documentación
 
-Consulta las rutas de los tres servicios, sus errores, el formato de los eventos, las colas de Notificaciones y cómo reprocesar una DLQ en [Contratos de API y eventos](docs/api.md). Las reglas de agenda, vacunación, reintentos y deduplicación están en [Decisiones de backend](docs/decisiones.md). Para la presentación, abre [Sustentación del backend](docs/sustentacion-backend.md).
+Consulta las rutas de los tres servicios, sus errores, el formato de los eventos, las colas de Notificaciones y cómo reprocesar una DLQ en [Contratos de API y eventos](docs/api.md). Las reglas de agenda, vacunación, reintentos y deduplicación están en [Decisiones de backend](docs/decisiones.md). Para la presentación, abre [Sustentación del backend](docs/sustentacion-backend.md) y el guion de la demo por la interfaz con el plan de pruebas en [Demo y plan de pruebas](docs/demo-y-pruebas.md).
