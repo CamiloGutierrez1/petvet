@@ -17,6 +17,7 @@ public final class RegistroHistorialBuilder {
     private List<String> vacunasAplicadas = List.of();
     private List<String> tratamientos = List.of();
     private List<String> examenes = List.of();
+    private List<String> cirugias = List.of();
     private String observaciones;
     private LocalDate proximoControl;
 
@@ -52,6 +53,11 @@ public final class RegistroHistorialBuilder {
         return this;
     }
 
+    public RegistroHistorialBuilder cirugias(List<String> cirugias) {
+        this.cirugias = copiarLista(cirugias);
+        return this;
+    }
+
     public RegistroHistorialBuilder observaciones(String observaciones) {
         this.observaciones = observaciones;
         return this;
@@ -64,7 +70,7 @@ public final class RegistroHistorialBuilder {
 
     public RegistroHistorial build() {
         return new RegistroHistorial(null, citaId, mascotaId, veterinarioId, fecha, tipoConsulta,
-                diagnostico, vacunasAplicadas, tratamientos, examenes, observaciones, proximoControl);
+                diagnostico, vacunasAplicadas, tratamientos, examenes, cirugias, observaciones, proximoControl);
     }
 
     private static List<String> copiarLista(List<String> valores) {

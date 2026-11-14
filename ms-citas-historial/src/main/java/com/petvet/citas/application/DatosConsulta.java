@@ -6,4 +6,4 @@ import java.util.List;
 
 public record DatosConsulta(TipoConsulta tipoConsulta, String diagnostico,
         List<String> vacunasAplicadas, List<String> tratamientos, List<String> examenes,
-        String observaciones, LocalDate proximoControl) { }
+        List<String> cirugias, String observaciones, LocalDate proximoControl) { }

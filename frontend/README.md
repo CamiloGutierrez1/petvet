@@ -93,13 +93,13 @@ VITE_USE_MOCKS_MASCOTAS=true    # Mascotas simulado (mientras Pia termina)
 VITE_USE_MOCKS_CITAS=false      # Citas contra el servicio real de Jersson
 ```
 
-Para probar con Citas real hay que levantar la demo de Jersson desde la raíz del repo (sin el front, para no ocupar el 5173 de `npm run dev`):
+Si antes levantaste la demo con `mascotas-demo`, ejecuta una vez desde la raíz `docker compose --profile app down -v --remove-orphans`: borra los datos y las colas de esa demo, y sin ese paso la primera mascota que registres (id 4) puede aparecer con citas de esa demo. Para probar con los servicios reales hay que levantar la demo desde la raíz del repo, sin el contenedor del front para no ocupar el 5173 de `npm run dev`:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app --profile demo up -d --build ms-citas-historial mascotas-demo
+docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app up -d --build ms-mascotas-duenos ms-citas-historial ms-notificaciones
 ```
 
-La demo trae un servicio de mascotas de prueba con los ids 1, 2 y 3, los mismos de nuestros mocks, así que se puede agendar para Tobby (1) y Misha (2). Una mascota registrada en el front (id 4 en adelante) no existe en esa demo y Citas responde 404 al agendarle.
+Citas consulta las fichas en Mascotas y Dueños real, que trae a Tobby (1), Misha (2) y Kiwi (3), los mismos ids de nuestros mocks, y la demo les carga un historial de ejemplo. Con `VITE_USE_MOCKS_MASCOTAS=false`, las mascotas que se registran desde el front (id 4 en adelante) también se pueden agendar. Con `VITE_USE_MOCKS_MASCOTAS=true`, solo se pueden agendar Tobby, Misha y Kiwi: una mascota registrada en el mock existe solo en el navegador, y Citas busca su id en Mascotas y Dueños real, donde es otra mascota o no existe (404). Los correos de Notificaciones llegan a MailHog, en http://localhost:8025; si no hacen falta, el comando funciona sin `ms-notificaciones`.
 
 En modo mocks, lo que se registra (mascotas, citas, consultas) queda en memoria hasta recargar la página, así que se pueden probar los flujos completos.
 

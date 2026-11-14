@@ -130,21 +130,44 @@ class DatosDemoIT {
     }
 
     @Test
+    void elHistorialDeEjemploIncluyeUnaCirugiaConLaCirujana() throws Exception {
+        JsonNode historial = consultar("/api/mascotas/2/historial");
+
+        assertThat(historial.size()).isEqualTo(2);
+        List<JsonNode> conCirugias = new ArrayList<>();
+        historial.forEach(registro -> {
+            if (!registro.path("cirugias").isEmpty()) {
+                conCirugias.add(registro);
+            }
+        });
+        assertThat(conCirugias).singleElement().satisfies(registro -> {
+            assertThat(registro.path("cirugias")).extracting(JsonNode::asText).containsExactly("Esterilización");
+            assertThat(registro.path("veterinarioId").asLong()).isEqualTo(3);
+            assertThat(registro.path("tipoConsulta").asText()).isEqualTo("ESPECIALISTA");
+        });
+        assertThat(consultar("/api/mascotas/1/historial").findValues("cirugias"))
+                .as("las consultas sin cirugías traen una lista vacía")
+                .hasSize(3)
+                .allMatch(cirugias -> cirugias.isArray() && cirugias.isEmpty());
+    }
+
+    @Test
     void repetirLaSemillaNoDuplicaNiFallaSiUnaCitaRealOcupaElMismoTurno() {
         new ResourceDatabasePopulator(new ClassPathResource(SEMILLA)).execute(dataSource);
-        assertThat(contar("citas")).isEqualTo(5);
-        assertThat(contar("registros_historial")).isEqualTo(5);
+        assertThat(contar("citas")).isEqualTo(6);
+        assertThat(contar("registros_historial")).isEqualTo(6);
         assertThat(contar("historial_vacunas")).isEqualTo(4);
 
         jdbc.update("DELETE FROM registros_historial WHERE id = 900003");
         jdbc.update("UPDATE citas SET id = 1 WHERE id = 900003");
         new ResourceDatabasePopulator(new ClassPathResource(SEMILLA)).execute(dataSource);
 
-        assertThat(contar("citas")).as("la cita real conserva el turno").isEqualTo(5);
+        assertThat(contar("citas")).as("la cita real conserva el turno").isEqualTo(6);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM citas WHERE id = 900003", Long.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial WHERE id = 900003", Long.class))
                 .isZero();
         assertThat(contar("historial_examenes")).as("sin el examen de la consulta omitida").isEqualTo(2);
+        assertThat(contar("historial_cirugias")).isEqualTo(1);
     }
 
     @Test

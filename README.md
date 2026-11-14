@@ -40,13 +40,17 @@ Cada módulo hereda del `pom.xml` raíz las dependencias comunes (web, validatio
 ## Demostración de Citas e Historial
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app --profile demo up -d --build
+docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app up -d --build
 python3 scripts/probar_citas.py
 ```
 
-El Compose de demo dirige las consultas de Citas a `mascotas-demo:8080`, con las mascotas del front (Tobby, Misha y Kiwi) y un cachorro, Max, cuya primera vacuna vence en los próximos días. Carga además un historial de ejemplo con vacunas al día para las tres primeras y ejecuta la revisión de vacunas cada minuto. El script comprueba disponibilidad, creación de una cita, rechazo de un turno duplicado, registro de consulta, historial y próximas vacunas. Espera hasta 90 segundos por los dos eventos de cita. Para comprobar también `vacuna.proxima`, ejecuta `python3 scripts/probar_citas.py --esperar-vacuna`.
+La demo usa el perfil `app` completo, con Mascotas y Dueños, Citas e Historial y Notificaciones reales. El Compose de demo solo cambia dos cosas en Citas: carga un historial de ejemplo de Tobby, Misha y Kiwi, las mascotas 1, 2 y 3 de los datos iniciales de Mascotas y Dueños, con vacunas al día para Tobby y Misha, y revisa las vacunas cada minuto en lugar de una vez al día.
 
-Los eventos llegan a colas de prueba en RabbitMQ, que permiten demostrar el flujo hasta el broker mientras se integra el consumidor de Pia.
+El script comprueba la salud de los tres servicios y de MailHog. Registra en Mascotas y Dueños un dueño con un correo nuevo y un cachorro de 58 días, agenda el primer turno libre de mañana, comprueba que el mismo turno se rechaza con `409`, consulta la cita, registra la consulta con exámenes y una cirugía y lee el historial y las próximas vacunas. Al final busca en MailHog los correos de ese dueño: la confirmación de la cita y el resumen de la consulta deben llegar en 90 segundos y saludarlo por su nombre. El recordatorio de la vacuna polivalente depende de la revisión de cada minuto, así que el script lo espera otros 90 segundos y, si no llega, solo avisa. Con `--esperar-vacuna`, el script falla si el recordatorio no llega.
+
+El script no crea colas en RabbitMQ: los eventos llegan a las colas de Notificaciones. Si encuentra `petvet.demo.citas` o `petvet.demo.vacunas`, las colas de prueba que creaban sus versiones anteriores, las borra y lo informa. Esas colas guardan copias de eventos que nadie consume y hacen que Citas dé por entregado un evento aunque Notificaciones no tenga sus colas.
+
+Si corriste la demo anterior, la que usaba un servicio simulado de mascotas, la base de Citas conserva citas de mascotas simuladas cuyos ids ahora son de otras mascotas reales. Para empezar limpio, ejecuta `docker compose --profile app down -v --remove-orphans` antes de levantar la demo. Ese comando borra los datos locales de todas las bases y RabbitMQ, y el contenedor `mascotas-demo` si aún existe.
 
 Si cambias las credenciales de RabbitMQ en `.env`, exporta también `PETVET_RABBITMQ_USER` y `PETVET_RABBITMQ_PASSWORD` antes de ejecutar el script. Compose lee `.env` y Python recibe las variables de su proceso.
 
@@ -69,13 +73,7 @@ Desde el IDE, Citas busca Mascotas y Dueños en `http://localhost:8081` salvo qu
 
 ## Detener los servicios
 
-Para el arranque principal, ejecuta `docker compose --profile app down`. Si levantaste la demo, usa los dos archivos y los dos perfiles también al detenerla.
-
-```sh
-docker compose -f docker-compose.yml -f docker-compose.demo.yml --profile app --profile demo down
-```
-
-Estos comandos conservan los datos en los volúmenes de Docker.
+Ejecuta `docker compose --profile app down`, también después de la demo: el Compose de demo no agrega servicios, solo cambia la configuración de Citas. El comando conserva los datos en los volúmenes de Docker.
 
 ## Verificación local del 10 de noviembre de 2026
 

@@ -24,6 +24,7 @@ class RegistroHistorialBuilderTest {
                 .vacunasAplicadas(List.of("Rabia"))
                 .tratamientos(List.of("Tratamiento ficticio"))
                 .examenes(List.of("Examen ficticio"))
+                .cirugias(List.of("Cirugía ficticia"))
                 .observaciones("Datos académicos")
                 .proximoControl(LocalDate.of(2026, 11, 23))
                 .build();
@@ -38,6 +39,7 @@ class RegistroHistorialBuilderTest {
         assertThat(registro.vacunasAplicadas()).containsExactly("Rabia");
         assertThat(registro.tratamientos()).containsExactly("Tratamiento ficticio");
         assertThat(registro.examenes()).containsExactly("Examen ficticio");
+        assertThat(registro.cirugias()).containsExactly("Cirugía ficticia");
         assertThat(registro.observaciones()).isEqualTo("Datos académicos");
         assertThat(registro.proximoControl()).isEqualTo(LocalDate.of(2026, 11, 23));
     }
@@ -49,6 +51,7 @@ class RegistroHistorialBuilderTest {
         assertThat(registro.vacunasAplicadas()).isEmpty();
         assertThat(registro.tratamientos()).isEmpty();
         assertThat(registro.examenes()).isEmpty();
+        assertThat(registro.cirugias()).isEmpty();
         assertThat(registro.proximoControl()).isNull();
     }
 
@@ -65,26 +68,49 @@ class RegistroHistorialBuilderTest {
         List<String> vacunas = new ArrayList<>(List.of("Rabia"));
         List<String> tratamientos = new ArrayList<>(List.of("Tratamiento inicial"));
         List<String> examenes = new ArrayList<>(List.of("Examen inicial"));
+        List<String> cirugias = new ArrayList<>(List.of("Cirugía inicial"));
         RegistroHistorial registro = nuevoBuilder()
                 .diagnostico("Revisión de demo")
                 .vacunasAplicadas(vacunas)
                 .tratamientos(tratamientos)
                 .examenes(examenes)
+                .cirugias(cirugias)
                 .build();
 
         vacunas.clear();
         tratamientos.clear();
         examenes.clear();
+        cirugias.clear();
 
         assertThat(registro.vacunasAplicadas()).containsExactly("Rabia");
         assertThat(registro.tratamientos()).containsExactly("Tratamiento inicial");
         assertThat(registro.examenes()).containsExactly("Examen inicial");
+        assertThat(registro.cirugias()).containsExactly("Cirugía inicial");
         assertThatThrownBy(() -> registro.vacunasAplicadas().add("Otra"))
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> registro.tratamientos().clear())
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> registro.examenes().clear())
                 .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> registro.cirugias().add("Otra"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "\t\n"})
+    void rechazaUnaCirugiaSinTexto(String vacia) {
+        assertThatThrownBy(() -> nuevoBuilder().diagnostico("Revisión de demo")
+                .cirugias(List.of("Esterilización", vacia)).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Los elementos del historial deben contener texto");
+    }
+
+    @Test
+    void recortaLosEspaciosDeLasCirugias() {
+        RegistroHistorial registro = nuevoBuilder().diagnostico("Revisión de demo")
+                .cirugias(List.of("  Esterilización ")).build();
+
+        assertThat(registro.cirugias()).containsExactly("Esterilización");
     }
 
     private RegistroHistorialBuilder nuevoBuilder() {

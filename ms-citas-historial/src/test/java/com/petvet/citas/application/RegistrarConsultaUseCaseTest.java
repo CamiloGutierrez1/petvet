@@ -139,7 +139,7 @@ class RegistrarConsultaUseCaseTest {
             RegistroHistorial guardado = new RegistroHistorial(7L, entrada.citaId(), entrada.mascotaId(),
                     entrada.veterinarioId(), entrada.fecha(), entrada.tipoConsulta(), entrada.diagnostico(),
                     entrada.vacunasAplicadas(), entrada.tratamientos(), entrada.examenes(),
-                    entrada.observaciones(), entrada.proximoControl());
+                    entrada.cirugias(), entrada.observaciones(), entrada.proximoControl());
             persistido.set(guardado);
             return guardado;
         });
@@ -149,6 +149,7 @@ class RegistrarConsultaUseCaseTest {
 
         assertThat(resultado.id()).isEqualTo(7L);
         assertThat(resultado.fecha()).isEqualTo(LocalDateTime.of(2026, 11, 9, 20, 0));
+        assertThat(resultado.cirugias()).containsExactly("Drenaje de absceso");
         ArgumentCaptor<Cita> completada = ArgumentCaptor.forClass(Cita.class);
         ArgumentCaptor<CitaCompletadaEvento> evento = ArgumentCaptor.forClass(CitaCompletadaEvento.class);
         InOrder orden = inOrder(historiales, citas, mascotas, eventos);
@@ -162,10 +163,27 @@ class RegistrarConsultaUseCaseTest {
         assertThat(transacciones.abiertas()).isEqualTo(1);
         assertThat(completada.getValue().estado()).isEqualTo(EstadoCita.COMPLETADA);
         assertThat(completada.getValue().duracionMinutos()).isEqualTo(60);
-        assertThat(evento.getValue()).isEqualTo(new CitaCompletadaEvento(42L, "Luna demo",
+        assertThat(evento.getValue()).isEqualTo(new CitaCompletadaEvento(42L, "Luna demo", "Dueño demo",
                 "dueno@example.test", "Diagnóstico demo", List.of("Rabia"), HOY.plusDays(14),
                 List.of(new VacunaPendiente("Triple felina", LocalDate.of(2025, 5, 1)),
-                        new VacunaPendiente("Rabia", HOY.plusMonths(12)))));
+                        new VacunaPendiente("Rabia", HOY.plusMonths(12))),
+                List.of("Hemograma", "Coprológico")));
+    }
+
+    @Test
+    void sinExamenesElEventoLlevaUnaListaVacia() {
+        when(citas.buscarPorId(42L)).thenReturn(Optional.of(AGENDADA));
+        when(citas.buscarPorIdParaActualizar(42L)).thenReturn(Optional.of(AGENDADA));
+        when(mascotas.buscar(3L)).thenReturn(MASCOTA);
+        when(historiales.guardar(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
+        DatosConsulta sinExamenes = new DatosConsulta(TipoConsulta.GENERAL, "Diagnóstico demo",
+                List.of(), List.of(), null, null, "Consulta académica", null);
+
+        registrar.ejecutar(42L, sinExamenes);
+
+        ArgumentCaptor<CitaCompletadaEvento> evento = ArgumentCaptor.forClass(CitaCompletadaEvento.class);
+        verify(eventos).citaCompletada(evento.capture());
+        assertThat(evento.getValue().examenes()).isEmpty();
     }
 
     private Cita cita(EstadoCita estado) {
@@ -174,6 +192,7 @@ class RegistrarConsultaUseCaseTest {
 
     private DatosConsulta datos(String diagnostico) {
         return new DatosConsulta(TipoConsulta.GENERAL, diagnostico, List.of("Rabia"),
-                List.of(), List.of(), "Consulta académica", HOY.plusDays(14));
+                List.of(), List.of("Hemograma", "Coprológico"), List.of("Drenaje de absceso"),
+                "Consulta académica", HOY.plusDays(14));
     }
 }

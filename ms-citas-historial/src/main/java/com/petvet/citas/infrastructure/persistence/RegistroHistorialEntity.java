@@ -63,6 +63,12 @@ public class RegistroHistorialEntity {
     @Column(name = "valor", nullable = false, columnDefinition = "text")
     private List<String> examenes = new ArrayList<>();
 
+    @ElementCollection
+    @CollectionTable(name = "historial_cirugias", joinColumns = @JoinColumn(name = "historial_id"))
+    @OrderColumn(name = "posicion")
+    @Column(name = "valor", nullable = false, columnDefinition = "text")
+    private List<String> cirugias = new ArrayList<>();
+
     @Column(columnDefinition = "text")
     private String observaciones;
 
@@ -84,6 +90,7 @@ public class RegistroHistorialEntity {
         entity.vacunasAplicadas = new ArrayList<>(registro.vacunasAplicadas());
         entity.tratamientos = new ArrayList<>(registro.tratamientos());
         entity.examenes = new ArrayList<>(registro.examenes());
+        entity.cirugias = new ArrayList<>(registro.cirugias());
         entity.observaciones = registro.observaciones();
         entity.proximoControl = registro.proximoControl();
         return entity;
@@ -92,6 +99,6 @@ public class RegistroHistorialEntity {
     RegistroHistorial toDomain() {
         return new RegistroHistorial(id, citaId, mascotaId, veterinarioId, fecha, tipoConsulta,
                 diagnostico, List.copyOf(vacunasAplicadas), List.copyOf(tratamientos),
-                List.copyOf(examenes), observaciones, proximoControl);
+                List.copyOf(examenes), List.copyOf(cirugias), observaciones, proximoControl);
     }
 }

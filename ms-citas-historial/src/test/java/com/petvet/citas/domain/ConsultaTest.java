@@ -22,6 +22,7 @@ class ConsultaTest {
         assertThat(registro.diagnostico()).isEqualTo("Consulta de demo");
         assertThat(registro.citaId()).isEqualTo(7L);
         assertThat(registro.examenes()).isEmpty();
+        assertThat(registro.cirugias()).isEmpty();
     }
 
     @ParameterizedTest

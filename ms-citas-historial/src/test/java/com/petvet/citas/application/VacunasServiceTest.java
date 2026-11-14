@@ -71,6 +71,8 @@ class VacunasServiceTest {
         VacunaProximaEvento evento = captor.getValue();
         assertThat(evento.mascotaId()).isEqualTo(MASCOTA_ID);
         assertThat(evento.mascotaNombre()).isEqualTo("Mascota de demostración");
+        assertThat(evento.duenoNombre()).as("el correo saluda al dueño por su nombre")
+                .isEqualTo("Dueño de demostración");
         assertThat(evento.duenoEmail()).isEqualTo("dueno@example.test");
         assertThat(evento.vacuna()).as("la rabia del cachorro vence un mes después, fuera de la ventana")
                 .isEqualTo("Polivalente");

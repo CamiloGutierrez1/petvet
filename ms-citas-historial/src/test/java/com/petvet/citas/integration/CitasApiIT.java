@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -104,6 +105,12 @@ class CitasApiIT {
         assertThat(veterinarios.cuerpo().size()).isEqualTo(5);
         assertThat(veterinarios.cuerpo().get(0).path("id").asLong()).isEqualTo(1);
         assertThat(veterinarios.cuerpo().get(0).path("nombre").asText()).isEqualTo("Dra. Paula Castaño");
+        assertThat(veterinarios.cuerpo().get(0).path("horaInicio").asText()).isEqualTo("08:00");
+        assertThat(veterinarios.cuerpo().get(0).path("horaFin").asText()).isEqualTo("18:00");
+        assertThat(veterinarios.cuerpo().findValuesAsText("horaInicio")).hasSize(5)
+                .allMatch(hora -> hora.matches("\\d{2}:\\d{2}"));
+        assertThat(veterinarios.cuerpo().findValuesAsText("horaFin")).hasSize(5)
+                .allMatch(hora -> hora.matches("\\d{2}:\\d{2}"));
         assertThat(veterinarios.cuerpo().findValuesAsText("especialidad"))
                 .contains("Cirugía", "Odontología")
                 .noneMatch(especialidad -> especialidad.isBlank());
@@ -116,6 +123,39 @@ class CitasApiIT {
         assertThat(disponibilidad.cuerpo().path("horarios").size()).isEqualTo(20);
         assertThat(LocalDateTime.parse(disponibilidad.cuerpo().path("horarios").get(0).asText()))
                 .isEqualTo(fecha.atTime(8, 0));
+    }
+
+    @Test
+    void cadaVeterinarioAtiendeSoloDentroDeSuHorario() throws Exception {
+        var cirujana = consultar("GET", "/api/veterinarios", null).cuerpo().get(2);
+        assertThat(cirujana.path("nombre").asText()).isEqualTo("Dra. Valentina Ríos");
+        assertThat(cirujana.path("horaInicio").asText()).isEqualTo("07:00");
+        assertThat(cirujana.path("horaFin").asText()).isEqualTo("13:00");
+
+        var manana = consultar("GET", "/api/veterinarios/3/disponibilidad?fecha=" + fecha, null)
+                .cuerpo().path("horarios");
+        assertThat(manana.size()).isEqualTo(12);
+        assertThat(LocalDateTime.parse(manana.get(0).asText())).isEqualTo(fecha.atTime(7, 0));
+        assertThat(LocalDateTime.parse(manana.get(11).asText())).isEqualTo(fecha.atTime(12, 30));
+        for (LocalDateTime fuera : List.of(fecha.atTime(6, 30), fecha.atTime(13, 0))) {
+            var rechazada = agendar(3, 3, fuera);
+            assertError(rechazada, 400);
+            assertThat(rechazada.cuerpo().path("error").asText()).isEqualTo("DATOS_INVALIDOS");
+            assertThat(rechazada.cuerpo().path("detalle").asText()).as(fuera.toString())
+                    .isEqualTo("La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00");
+        }
+        assertThat(agendar(3, 3, fecha.atTime(7, 0)).estado()).isEqualTo(201);
+        assertThat(agendar(4, 3, fecha.atTime(12, 30)).estado()).isEqualTo(201);
+
+        // La tarde del Dr. Julián Herrera pasa del horario general (08:00 a 18:00): manda el del veterinario.
+        var tarde = consultar("GET", "/api/veterinarios/4/disponibilidad?fecha=" + fecha, null)
+                .cuerpo().path("horarios");
+        assertThat(tarde.size()).isEqualTo(12);
+        assertThat(LocalDateTime.parse(tarde.get(0).asText())).isEqualTo(fecha.atTime(13, 0));
+        assertThat(agendar(5, 4, fecha.atTime(18, 30)).estado()).isEqualTo(201);
+        assertThat(agendar(5, 4, fecha.atTime(12, 30)).cuerpo().path("detalle").asText())
+                .contains("13:00 a 19:00");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM citas", Long.class)).isEqualTo(3);
     }
 
     @Test
@@ -237,7 +277,8 @@ class CitasApiIT {
                     "tipoConsulta", "GENERAL", "diagnostico", "Consulta " + i,
                     "vacunasAplicadas", List.of("Vacuna " + i),
                     "tratamientos", List.of("Tratamiento " + i, "Reposo " + i),
-                    "examenes", List.of("Examen " + i)));
+                    "examenes", List.of("Examen " + i),
+                    "cirugias", List.of("Cirugía " + i)));
             assertThat(consulta.estado()).isEqualTo(201);
         }
         Statistics estadisticas = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
@@ -248,8 +289,9 @@ class CitasApiIT {
 
             assertThat(historial.estado()).isEqualTo(200);
             assertThat(historial.cuerpo().size()).isEqualTo(6);
-            // Una consulta para los registros y una por cada lista. Antes eran 1 + 3 por registro.
-            assertThat(estadisticas.getPrepareStatementCount()).isLessThanOrEqualTo(4);
+            // Una consulta para los registros y una por cada lista (vacunas, tratamientos, exámenes y
+            // cirugías). Sin la carga por lotes serían 1 + 4 por registro.
+            assertThat(estadisticas.getPrepareStatementCount()).isLessThanOrEqualTo(5);
             for (JsonNode registro : historial.cuerpo()) {
                 String numero = registro.path("diagnostico").asText().substring("Consulta ".length());
                 assertThat(registro.path("vacunasAplicadas")).extracting(JsonNode::asText)
@@ -258,6 +300,8 @@ class CitasApiIT {
                         .containsExactly("Tratamiento " + numero, "Reposo " + numero);
                 assertThat(registro.path("examenes")).extracting(JsonNode::asText)
                         .containsExactly("Examen " + numero);
+                assertThat(registro.path("cirugias")).extracting(JsonNode::asText)
+                        .containsExactly("Cirugía " + numero);
             }
         } finally {
             estadisticas.setStatisticsEnabled(false);
@@ -295,6 +339,8 @@ class CitasApiIT {
         assertThat(consulta.cuerpo().path("diagnostico").asText()).isEqualTo("Consulta de demostración");
         assertThat(consulta.cuerpo().path("tipoConsulta").asText()).isEqualTo("GENERAL");
         assertThat(consulta.cuerpo().path("tratamientos").get(0).asText()).isEqualTo("Tratamiento ficticio");
+        assertThat(consulta.cuerpo().path("cirugias").isArray()).as("sin cirugías, una lista vacía").isTrue();
+        assertThat(consulta.cuerpo().path("cirugias")).isEmpty();
 
         var historial = consultar("GET", "/api/mascotas/3/historial", null);
         assertThat(historial.estado()).isEqualTo(200);
@@ -303,6 +349,10 @@ class CitasApiIT {
         assertThat(jdbc.queryForObject("SELECT estado FROM citas WHERE id = ?", String.class, id))
                 .isEqualTo("COMPLETADA");
         assertThat(contarEventos("cita.completada:" + id)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT payload ->> 'examenes' FROM outbox_eventos WHERE clave_deduplicacion = ?",
+                String.class, "cita.completada:" + id)).as("sin exámenes, el evento trae una lista vacía")
+                .isEqualTo("[]");
         assertError(consultar("POST", "/api/citas/" + id + "/consulta", datosConsulta()), 409);
         assertError(consultar("PATCH", "/api/citas/" + id + "/cancelar", null), 409);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial", Long.class)).isEqualTo(1);
@@ -311,6 +361,55 @@ class CitasApiIT {
         var vacunas = consultar("GET", "/api/mascotas/3/proximas-vacunas", null);
         assertThat(vacunas.estado()).isEqualTo(200);
         assertThat(vacunas.cuerpo().isArray()).isTrue();
+    }
+
+    @Test
+    void lasCirugiasDeLaConsultaSeGuardanEnOrdenYNoCambianElEvento() throws Exception {
+        long id = agendar(3, 1, fecha.atTime(16, 0)).cuerpo().path("id").asLong();
+        var consulta = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "ESPECIALISTA", "diagnostico", "Herida profunda en la pata trasera",
+                "tratamientos", List.of("Amoxicilina cada 12 horas por 7 días"),
+                "cirugias", List.of(" Limpieza quirúrgica de la herida ", "Sutura")));
+
+        assertThat(consulta.estado()).isEqualTo(201);
+        assertThat(consulta.cuerpo().path("cirugias")).extracting(JsonNode::asText)
+                .containsExactly("Limpieza quirúrgica de la herida", "Sutura");
+        var historial = consultar("GET", "/api/mascotas/3/historial", null);
+        assertThat(historial.cuerpo().get(0).path("cirugias")).extracting(JsonNode::asText)
+                .containsExactly("Limpieza quirúrgica de la herida", "Sutura");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM historial_cirugias", Long.class)).isEqualTo(2);
+        assertThat(jdbc.queryForList(
+                "SELECT jsonb_object_keys(payload) FROM outbox_eventos WHERE clave_deduplicacion = ?",
+                String.class, "cita.completada:" + id))
+                .as("las cirugías no viajan en cita.completada")
+                .containsExactlyInAnyOrder("citaId", "mascotaNombre", "duenoNombre", "duenoEmail", "diagnostico",
+                        "vacunasAplicadas", "proximoControl", "proximasVacunas", "examenes");
+    }
+
+    @Test
+    void rechazaCirugiasVaciasOEnExcesoSinCompletarLaCita() throws Exception {
+        long id = agendar(3, 1, fecha.atTime(16, 30)).cuerpo().path("id").asLong();
+        var vacia = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Consulta de demostración",
+                "cirugias", List.of("Sutura", " ")));
+        assertError(vacia, 400);
+        assertThat(vacia.cuerpo().path("detalle").asText()).isEqualTo("cirugias[1] no puede estar vacío");
+
+        var demasiadas = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Consulta de demostración",
+                "cirugias", Collections.nCopies(51, "Sutura")));
+        assertError(demasiadas, 400);
+        assertThat(demasiadas.cuerpo().path("detalle").asText()).isEqualTo("cirugias admite máximo 50 elementos");
+
+        var larga = consultar("POST", "/api/citas/" + id + "/consulta", Map.of(
+                "tipoConsulta", "GENERAL", "diagnostico", "Consulta de demostración",
+                "cirugias", List.of("x".repeat(1001))));
+        assertError(larga, 400);
+        assertThat(larga.cuerpo().path("detalle").asText()).isEqualTo("cirugias[0] admite máximo 1000 caracteres");
+
+        assertThat(jdbc.queryForObject("SELECT estado FROM citas WHERE id = ?", String.class, id))
+                .isEqualTo("AGENDADA");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial", Long.class)).isZero();
     }
 
     @Test
@@ -376,7 +475,9 @@ class CitasApiIT {
         assertError(consultar("GET", "/api/citas/0", null), 400);
         assertError(consultar("GET", "/api/citas?veterinarioId=0", null), 400);
         assertError(consultar("GET", "/api/veterinarios/1/disponibilidad?fecha=invalida", null), 400);
-        assertError(agendar(-1, 1, fecha.atTime(9, 0)), 400);
+        var mascotaNegativa = agendar(-1, 1, fecha.atTime(9, 0));
+        assertError(mascotaNegativa, 400);
+        assertThat(mascotaNegativa.cuerpo().path("detalle").asText()).isEqualTo("mascotaId debe ser mayor que cero");
         assertError(consultar("GET", "/api/citas?mascotaId=-5", null), 400);
         assertError(consultar("PATCH", "/api/citas/0/cancelar", null), 400);
         assertError(consultar("GET", "/api/mascotas/-1/historial", null), 400);
@@ -420,8 +521,10 @@ class CitasApiIT {
     @Test
     void diagnosticoVacioNoCompletaLaCita() throws Exception {
         long id = agendar(3, 1, fecha.atTime(14, 0)).cuerpo().path("id").asLong();
-        assertError(consultar("POST", "/api/citas/" + id + "/consulta",
-                Map.of("tipoConsulta", "GENERAL", "diagnostico", " ")), 400);
+        var sinDiagnostico = consultar("POST", "/api/citas/" + id + "/consulta",
+                Map.of("tipoConsulta", "GENERAL", "diagnostico", " "));
+        assertError(sinDiagnostico, 400);
+        assertThat(sinDiagnostico.cuerpo().path("detalle").asText()).isEqualTo("diagnostico no puede estar vacío");
         assertThat(jdbc.queryForObject("SELECT estado FROM citas WHERE id = ?", String.class, id))
                 .isEqualTo("AGENDADA");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM registros_historial", Long.class)).isZero();
