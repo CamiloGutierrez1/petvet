@@ -1,52 +1,44 @@
-const API_URL = import.meta.env.VITE_API_MASCOTAS_URL;
+import { apiRequest } from "./api";
 
-async function request(endpoint, options = {}) {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers: {
-            ...(options.body ? {
-                "Content-Type": "application/json"
-            } : {}),
-            ...options.headers
-        }
-    });
+const BASE_URL = import.meta.env.VITE_API_MASCOTAS_URL;
 
-    if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `Error HTTP: ${response.status}`);
-    }
+// Dueños
+export const listarDuenos = () =>
+  apiRequest(`${BASE_URL}/api/duenos`);
 
-    if (response.status === 204) return null;
+export const registrarDueno = (dueno) =>
+  apiRequest(`${BASE_URL}/api/duenos`, {
+    method: "POST",
+    body: JSON.stringify(dueno),
+  });
 
-    const contentType = response.headers.get("content-type");
+// Mascotas
+export const listarMascotas = () =>
+  apiRequest(`${BASE_URL}/api/mascotas`);
 
-    return contentType?.includes("application/json")
-        ? response.json()
-        : null;
-}
+export const obtenerMascota = (id) =>
+  apiRequest(`${BASE_URL}/api/mascotas/${id}`);
 
-// 1. Listar las mascotas con los dueños
-export function listarMascotas(duenoId) {
-    return request(`/api/duenos/${duenoId}/mascotas`);
-}
+export const registrarMascota = (mascota) =>
+  apiRequest(`${BASE_URL}/api/mascotas`, {
+    method: "POST",
+    body: JSON.stringify(mascota),
+  });
 
-// 2. Traer un perfil completa de mascota
-export function obtenerFichaMascota(mascotaId) {
-    return request(`/api/mascotas/${mascotaId}`);
-}
+export const actualizarMascota = (id, mascota) =>
+  apiRequest(`${BASE_URL}/api/mascotas/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(mascota),
+  });
 
-// 3. Registrar un mascota
-export function registrarMascota(duenoId, datos) {
-    return request(`/api/duenos/${duenoId}/mascotas`, {
-        method: "POST",
-        body: JSON.stringify(datos)
-    });
-}
+// Pet photo
+export const subirFotoMascota = (id, archivo) => {
+  const formData = new FormData();
 
-// 4. Editar un mascota
-export function actualizarMascota(mascotaId, datos) {
-    return request(`/api/mascotas/${mascotaId}`, {
-        method: "PUT",
-        body: JSON.stringify(datos)
-    });
-}
+  formData.append("foto", archivo);
+
+  return apiRequest(`${BASE_URL}/api/mascotas/${id}/foto`, {
+    method: "POST",
+    body: formData,
+  });
+};
