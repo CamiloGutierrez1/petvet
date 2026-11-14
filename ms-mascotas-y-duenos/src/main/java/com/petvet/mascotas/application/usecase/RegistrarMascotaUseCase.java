@@ -1,4 +1,4 @@
-package com.petvet.mascotas.application;
+package com.petvet.mascotas.application.usecase;
 
 public class RegistrarMascotaUseCase {
 
