@@ -164,14 +164,14 @@ Formato anidado con los mismos datos.
 
 ## Eventos RabbitMQ
 
-Citas implementa la publicación en el exchange durable `petvet.events` de tipo `topic`. Las colas de integración son responsabilidad de Pia. El script de demo crea colas propias para comprobar la publicación.
+Citas implementa la publicación en el exchange durable `petvet.events` de tipo `topic`. Notificaciones declara sus colas y las enlaza a ese exchange. El script de demo no crea colas: comprueba que los correos lleguen a MailHog.
 
 | Clave de enrutamiento | Cuándo se publica | Cola | Campos del mensaje |
 | --- | --- | --- | --- |
 | `cita.agendada` | Agendar una cita. | `notificaciones.citas` | `citaId`, `mascotaNombre`, `duenoNombre`, `duenoEmail`, `veterinarioNombre`, `fechaHora`, `tipoServicio` |
-| `cita.completada` | Registrar la consulta y completar la cita. | `notificaciones.citas` | `citaId`, `mascotaNombre`, `duenoEmail`, `diagnostico`, `vacunasAplicadas`, `proximoControl`, `proximasVacunas`, `examenes` |
-| `vacuna.proxima` | Detectar una vacuna próxima en la tarea `@Scheduled`. | `notificaciones.vacunas` | `mascotaId`, `mascotaNombre`, `duenoEmail`, `vacuna`, `fechaLimite` |
+| `cita.completada` | Registrar la consulta y completar la cita. | `notificaciones.citas` | `citaId`, `mascotaNombre`, `duenoNombre`, `duenoEmail`, `diagnostico`, `vacunasAplicadas`, `proximoControl`, `proximasVacunas`, `examenes` |
+| `vacuna.proxima` | Detectar una vacuna próxima en la tarea `@Scheduled`. | `notificaciones.vacunas` | `mascotaId`, `mascotaNombre`, `duenoNombre`, `duenoEmail`, `vacuna`, `fechaLimite` |
 
-En `cita.completada`, `vacunasAplicadas` es un arreglo de textos, `proximasVacunas` un arreglo de objetos `VacunaPendiente` y `proximoControl` una fecha de calendario o nulo. `examenes` es un arreglo con los nombres de los exámenes registrados en la consulta, vacío si no se registró ninguno; con él Notificaciones arma el aviso de exámenes sin un evento aparte. Un mensaje publicado antes de que existiera este campo no lo trae, así que el consumidor debe tomarlo como lista vacía. El campo numérico `mascotaId` de `vacuna.proxima` es una extensión local del plan.
+En `cita.completada`, `vacunasAplicadas` es un arreglo de textos, `proximasVacunas` un arreglo de objetos `VacunaPendiente` y `proximoControl` una fecha de calendario o nulo. `examenes` es un arreglo con los nombres de los exámenes registrados en la consulta, vacío si no se registró ninguno; con él Notificaciones arma el aviso de exámenes sin un evento aparte. Los tres eventos traen `duenoNombre`, el nombre del dueño según la ficha de Mascotas y Dueños, para que el correo lo salude por su nombre. `examenes` y `duenoNombre` en `cita.completada`, y `duenoNombre` en `vacuna.proxima`, son campos nuevos: un mensaje que ya estaba en la outbox se publica tal como se guardó, sin ellos, así que el consumidor debe tomar `examenes` como lista vacía y `duenoNombre` como ausente. El campo numérico `mascotaId` de `vacuna.proxima` es una extensión local del plan.
 
 Notificaciones debe enlazar `notificaciones.citas` con `cita.*` y `notificaciones.vacunas` con `vacuna.*`. Cada mensaje persistente tiene el cuerpo JSON en UTF-8 y un UUID estable en la propiedad AMQP `messageId`. La entrega es al menos una vez y el consumidor debe deduplicar por esa propiedad. Si RabbitMQ no está disponible o no hay cola enlazada, el evento queda pendiente en PostgreSQL para reintento.
