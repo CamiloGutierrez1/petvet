@@ -1,0 +1,411 @@
+# Contratos de API y eventos de PetVet
+
+Este documento reúne los contratos de los tres servicios del backend, Mascotas y Dueños, Citas e Historial y Notificaciones, y los eventos que los conectan por RabbitMQ. Un cambio de contrato se avisa al equipo antes del merge; los tipos que usa el frontend están en `frontend/src/api/types.ts`.
+
+## Servicios y puertos
+
+Los puertos de la tabla corresponden al acceso desde la máquina local.
+
+| Servicio | Puertos | Base de datos | Responsable |
+| --- | --- | --- | --- |
+| `frontend` | `5173` | — | Camilo y Andrés Daza |
+| `ms-mascotas-duenos` | `8081` | `postgres-mascotas` en `5433` | Jersson |
+| `ms-citas-historial` | `8082` | `postgres-citas` en `5434` | Jersson |
+| `ms-notificaciones` | `8083` | `postgres-notificaciones` en `5435` | Jersson |
+| RabbitMQ | AMQP `5672`, panel `15672` | — | Jersson |
+| MailHog | SMTP `1025`, bandeja `8025` | — | Jersson |
+
+## Rutas disponibles en el arranque local
+
+Los tres servicios exponen estas rutas técnicas, cada uno en su puerto: Mascotas y Dueños en `8081`, Citas e Historial en `8082` y Notificaciones en `8083`.
+
+| Método y ruta | Uso |
+| --- | --- |
+| `GET /actuator/health` | Consultar la salud del servicio. |
+| `GET /v3/api-docs` | Consultar el documento OpenAPI en JSON. |
+| `GET /swagger-ui/index.html` | Abrir la interfaz de Swagger. |
+
+El origen permitido por defecto es `http://localhost:5173`.
+
+## API REST
+
+El frontend no tiene inicio de sesión. En la entrada se elige el perfil: el dueño se identifica con su correo, que se busca en `GET /api/duenos`, y el veterinario se elige de la lista. El navegador conserva el identificador elegido.
+
+### Mascotas y Dueños implementado
+
+Mascotas y Dueños atiende en el puerto `8081`, con las mismas rutas técnicas y el mismo origen permitido que Citas e Historial.
+
+| Método y ruta | Cuerpo | Respuesta de éxito | Errores | Uso |
+| --- | --- | --- | --- | --- |
+| `POST /api/duenos` | `NuevoDueno` | `201`, objeto `Dueno` | `400`, `409` | Registrar un dueño. |
+| `GET /api/duenos` | — | `200`, arreglo de `Dueno` ordenado por `id` | — | Listar los dueños para el selector de perfil y la entrada por correo. |
+| `GET /api/duenos/{id}` | — | `200`, objeto `Dueno` | `400`, `404` | Consultar los datos de un dueño. |
+| `POST /api/duenos/{id}/mascotas` | `DatosMascota` | `201`, objeto `Mascota` | `400`, `404` | Registrar una mascota del dueño de la ruta. |
+| `GET /api/duenos/{id}/mascotas` | — | `200`, arreglo de `Mascota` ordenado por `id` | `400`, `404` | Listar las mascotas de un dueño. |
+| `GET /api/mascotas/{id}` | — | `200`, objeto `FichaMascota` | `400`, `404` | Consultar la ficha de una mascota con el nombre y el correo del dueño. La consumen el frontend y `ms-citas-historial`. |
+| `PUT /api/mascotas/{id}` | `DatosMascota` | `200`, objeto `Mascota` | `400`, `404` | Editar una mascota. Cambia solo los cinco campos del cuerpo y conserva la foto y el dueño. |
+| `POST /api/mascotas/{id}/foto` | `multipart/form-data` con el campo `foto` | `200`, objeto `Mascota` con `fotoUrl` absoluta | `400`, `404` | Subir o reemplazar la foto de una mascota. |
+| `GET /api/mascotas/{id}/foto` | — | `200`, la imagen con su `Content-Type` | `400`, `404` | Descargar la foto subida. Es la dirección de `fotoUrl`. |
+
+Las respuestas `201` incluyen la cabecera `Location`, por ejemplo `/api/mascotas/4`. Los identificadores de ruta son enteros positivos; otro valor responde `400`.
+
+#### Campos de Mascotas y Dueños
+
+Cuerpo `NuevoDueno` de `POST /api/duenos`.
+
+| Campo | Tipo | Obligatorio | Reglas |
+| --- | --- | --- | --- |
+| `nombre` | texto | Sí | Hasta 100 caracteres. |
+| `documento` | texto | No | Hasta 30 caracteres. |
+| `email` | texto | Sí | Hasta 254 caracteres, con la forma `ana@correo.com`. |
+| `telefono` | texto | No | Solo dígitos, entre 7 y 10. |
+| `direccion` | texto | No | Hasta 200 caracteres. |
+
+Cuerpo `DatosMascota` de `POST /api/duenos/{id}/mascotas` y de `PUT /api/mascotas/{id}`.
+
+| Campo | Tipo | Obligatorio | Reglas |
+| --- | --- | --- | --- |
+| `nombre` | texto | Sí | Hasta 60 caracteres. |
+| `especie` | texto | Sí | `PERRO`, `GATO`, `AVE` u `OTRO`. |
+| `raza` | texto | Sí | Hasta 60 caracteres. |
+| `fechaNacimiento` | fecha de calendario | Sí | ISO, por ejemplo `2021-04-18`. No puede ser futura en `America/Bogota` ni anterior a `1900-01-01`. |
+| `peso` | número | Sí | Kilogramos, mayor que 0, con hasta 4 enteros y 3 decimales, por ejemplo `31.5` o `0.035`. |
+
+| Objeto de respuesta | Campos |
+| --- | --- |
+| `Dueno` | `id`, `nombre`, `documento` (texto o nulo), `email`, `telefono` (texto o nulo), `direccion` (texto o nulo) |
+| `Mascota` | `id`, `nombre`, `especie`, `raza`, `fechaNacimiento`, `peso`, `fotoUrl` (texto o nulo), `duenoId` |
+| `FichaMascota` | Los campos de `Mascota` más `duenoNombre` y `duenoEmail`. El ejemplo está en el contrato con Citas, más abajo. |
+
+- El correo se guarda sin espacios y en minúsculas, y debe cumplir la expresión con la que Citas valida la ficha, `[^\s@]+@[^\s@]+\.[^\s@]+`. Es único sin distinguir mayúsculas: repetirlo responde `409`.
+- Los textos se guardan sin espacios al inicio ni al final, y los opcionales vacíos o ausentes, como nulo.
+- El cuerpo de una mascota no lleva `fotoUrl` ni `duenoId`. Al registrar, el dueño sale de la ruta; el `PUT` conserva la foto y el dueño aunque el cuerpo los traiga.
+- `peso` se responde sin ceros sobrantes: `31.5`, `0.04` o `100`.
+- Los datos de ejemplo son los de los mocks del frontend: Laura Méndez (dueño `1`) con Tobby y Misha (mascotas `1` y `2`), y Santiago Rojas (dueño `2`) con Kiwi (mascota `3`). Los registros nuevos empiezan en el dueño `3` y en la mascota `4`.
+
+#### Fotos de las mascotas
+
+- `POST /api/mascotas/{id}/foto` recibe la imagen en el campo `foto` de un formulario `multipart/form-data`. Admite JPG, PNG o WebP de hasta 5 MB y comprueba el formato con los primeros bytes del archivo, no con su nombre ni con el tipo que declara.
+- La foto se guarda en PostgreSQL con su tipo de contenido y una versión que cambia en cada subida. La base de datos nunca guarda la URL.
+- La respuesta trae `fotoUrl` absoluta, por ejemplo `http://localhost:8081/api/mascotas/4/foto?v=1763078400000`. La base sale de `PETVET_FOTOS_URL_BASE`, por defecto `http://localhost:8081`, que es la dirección con la que el navegador llega al servicio. La versión evita que el navegador muestre la foto anterior.
+- Las mascotas de ejemplo tienen `fotoUrl` relativa al frontend, como `/mascotas/tobby.jpg`, hasta que se les sube una foto.
+- `GET /api/mascotas/{id}/foto` responde `404` si la mascota no tiene una foto subida.
+- La foto se sirve con `Cache-Control: no-cache` y una `ETag` igual a su versión. El navegador la guarda y la revalida con `If-None-Match`: si no cambió, recibe `304` sin los bytes.
+
+#### Errores de Mascotas y Dueños
+
+Los errores tienen el mismo cuerpo que en Citas, `{"error": "...", "detalle": "..."}`, con el detalle en español. Siempre se responden como `application/json`, aunque la cabecera `Accept` pida otro formato.
+
+| HTTP | Código | Cuándo ocurre |
+| --- | --- | --- |
+| `400` | `DATOS_INVALIDOS` | Campos inválidos, JSON mal formado, especie desconocida, fecha de nacimiento futura, identificador de ruta inválido, o una foto que falta, no es JPG, PNG o WebP, o pesa más de 5 MB. |
+| `404` | `RECURSO_NO_ENCONTRADO` | Dueño, mascota, foto subida o ruta inexistente. |
+| `409` | `CONFLICTO` | Correo ya registrado, con el detalle `Ya existe un dueño registrado con ese correo.`, también cuando llegan dos registros simultáneos con el mismo correo. Si la base rechaza los datos por otra restricción, el detalle es genérico y no menciona el correo. |
+| `405` | `METODO_NO_PERMITIDO` | Método HTTP que la ruta no admite. |
+| `406` | `RESPUESTA_NO_ACEPTABLE` | La cabecera `Accept` no admite el formato de la respuesta. |
+| `415` | `CONTENIDO_NO_SOPORTADO` | Cuerpo que no es JSON, o foto que no llega como `multipart/form-data`. |
+| `500` | `ERROR_INTERNO` | Error no previsto al atender la operación. |
+
+#### Ejemplo de `POST /api/duenos`
+
+```json
+{
+  "nombre": "Ana Prueba",
+  "documento": "1000000003",
+  "email": "ana.prueba@correo.com",
+  "telefono": "3001234567",
+  "direccion": "Calle 1 # 2-3, Bogotá"
+}
+```
+
+#### Ejemplo de `POST /api/duenos/{id}/mascotas` y `PUT /api/mascotas/{id}`
+
+```json
+{
+  "nombre": "Max",
+  "especie": "PERRO",
+  "raza": "Beagle",
+  "fechaNacimiento": "2025-06-01",
+  "peso": 12.5
+}
+```
+
+Respuesta `201` de ese registro para el dueño `3`, en una base recién creada.
+
+```json
+{
+  "id": 4,
+  "nombre": "Max",
+  "especie": "PERRO",
+  "raza": "Beagle",
+  "fechaNacimiento": "2025-06-01",
+  "peso": 12.5,
+  "fotoUrl": null,
+  "duenoId": 3
+}
+```
+
+### Citas e Historial implementado
+
+| Método y ruta | Respuesta de éxito | Uso |
+| --- | --- | --- |
+| `GET /api/veterinarios` | `200`, arreglo de `Veterinario` | Listar veterinarios con su horario de atención. |
+| `GET /api/veterinarios/{id}/disponibilidad?fecha=2026-11-20` | `200`, objeto `Disponibilidad` | Consultar los turnos libres de un veterinario en la fecha indicada, dentro de su horario de atención. |
+| `POST /api/citas` | `201`, objeto `Cita` | Agendar y guardar `cita.agendada` para publicación. |
+| `GET /api/citas/{id}` | `200`, objeto `Cita` | Consultar una cita con su estado actual, por ejemplo para registrar su consulta. |
+| `GET /api/citas?mascotaId={id}` | `200`, arreglo de `Cita` | Consultar las citas de una mascota, de la más reciente a la más antigua. |
+| `GET /api/citas?veterinarioId={id}` | `200`, arreglo de `Cita` | Consultar todas las citas de un veterinario, de la más reciente a la más antigua, incluidas las canceladas. Sirve para armar su lista de pacientes. |
+| `GET /api/citas?veterinarioId={id}&fecha=2026-11-20` | `200`, arreglo de `Cita` | Consultar la agenda de un veterinario para la fecha indicada, en orden de hora. |
+| `PATCH /api/citas/{id}/cancelar` | `200`, objeto `Cita` | Cancelar una cita. |
+| `POST /api/citas/{id}/consulta` | `201`, objeto `RegistroHistorial` | Registrar la consulta, completar la cita y guardar `cita.completada` para publicación. |
+| `GET /api/mascotas/{id}/historial` | `200`, arreglo de `RegistroHistorial` | Consultar el historial clínico de una mascota. |
+| `GET /api/mascotas/{id}/proximas-vacunas` | `200`, arreglo de `VacunaPendiente` | Consultar las vacunas pendientes de una mascota, en orden de vencimiento. |
+
+#### Formatos y validaciones
+
+- Los identificadores son enteros positivos. `GET /api/citas` acepta `mascotaId` solo, `veterinarioId` solo o `veterinarioId` junto con `fecha`. Otra combinación responde `400`, y un veterinario inexistente, `404`.
+- Las vacunas que calcula Citas son `Polivalente` (perros), `Triple felina` (gatos) y `Rabia`. Para que una vacuna aplicada cuente en el cálculo, la consulta debe registrarla con ese mismo nombre; no importan las mayúsculas.
+- Las fechas de calendario usan ISO, por ejemplo `2026-11-20`. Las fechas con hora de negocio usan ISO local sin desplazamiento, por ejemplo `2026-11-20T09:30:00`, en `America/Bogota` por defecto. Se admiten los años 1 a 9999.
+- Tipos de servicio `CONSULTA_GENERAL`, `VACUNACION`, `CONTROL` y `ESPECIALISTA`. Tipos de consulta `GENERAL` y `ESPECIALISTA`. Estados de cita `AGENDADA`, `COMPLETADA` y `CANCELADA`.
+- Cada veterinario atiende todos los días de `horaInicio` a `horaFin`, en formato `HH:mm`. Los turnos duran 30 minutos por defecto (`PETVET_AGENDA_DURACION_MINUTOS`) y se cuentan desde `horaInicio`. Una cita debe empezar en uno de esos turnos y terminar a más tardar en `horaFin`; si no, la respuesta es `400` con la franja del veterinario en el detalle, por ejemplo `La cita debe quedar dentro del horario del veterinario, de 07:00 a 13:00`. Al agendar, un veterinario inexistente responde `404` antes de revisar la hora. El horario de cada veterinario está en la tabla `veterinarios` (migración V7). `PETVET_AGENDA_APERTURA` y `PETVET_AGENDA_CIERRE` solo son el respaldo de un veterinario sin horario propio, que hoy no puede existir porque `hora_inicio` y `hora_fin` son obligatorias.
+- La consulta exige diagnóstico. Vacunas aplicadas, tratamientos, exámenes, cirugías, observaciones y próximo control son opcionales. El próximo control debe caer en la fecha de la consulta o después.
+- Cada lista de la consulta admite hasta 50 textos no vacíos: hasta 200 caracteres por vacuna y hasta 1000 por tratamiento, examen o cirugía. Una lista que no se envía se guarda vacía. Las cirugías son una lista del historial, como los tratamientos, y no un tipo de servicio ni de consulta.
+
+| Objeto de respuesta | Campos |
+| --- | --- |
+| `Veterinario` | `id`, `nombre`, `especialidad`, `horaInicio` y `horaFin` (hora `HH:mm`) |
+| `Disponibilidad` | `veterinarioId`, `fecha`, `horarios` (arreglo de fechas con hora) |
+| `Cita` | `id`, `mascotaId`, `veterinarioId`, `fechaHora`, `tipoServicio`, `estado`, `duracionMinutos` |
+| `RegistroHistorial` | `id`, `citaId`, `mascotaId`, `veterinarioId`, `fecha` (fecha con hora), `tipoConsulta`, `diagnostico`, `vacunasAplicadas`, `tratamientos`, `examenes`, `cirugias` (arreglos de textos, vacíos si no hay datos), `observaciones`, `proximoControl` (fecha de calendario o nulo) |
+| `VacunaPendiente` | `vacuna`, `fechaLimite` (fecha de calendario) |
+
+Los errores tienen cuerpo `{"error": "...", "detalle": "..."}`, con el detalle en español. Si falla la validación de un campo, el detalle empieza con su nombre, por ejemplo `cirugias[1] no puede estar vacío`.
+
+| HTTP | Código | Cuándo ocurre |
+| --- | --- | --- |
+| `400` | `DATOS_INVALIDOS` | JSON, fechas, turno fuera del horario del veterinario, parámetros o campos inválidos. |
+| `404` | `RECURSO_NO_ENCONTRADO` | Recurso inexistente, incluida una ficha que Mascotas y Dueños responde con `404`. |
+| `409` | `CONFLICTO` | Turno ocupado por veterinario o mascota, estado de cita incompatible con la operación, o dos solicitudes simultáneas sobre el mismo turno o cita. |
+| `503` | `DEPENDENCIA_NO_DISPONIBLE` | Mascotas y Dueños no responde, falla o entrega una ficha inválida. |
+| `500` | `ERROR_INTERNO` | Error no previsto al atender la operación. |
+
+#### Ejemplo de respuesta de `GET /api/veterinarios`
+
+```json
+[
+  { "id": 1, "nombre": "Dra. Paula Castaño", "especialidad": "Medicina general", "horaInicio": "08:00", "horaFin": "18:00" },
+  { "id": 2, "nombre": "Dr. Andrés Villamil", "especialidad": "Dermatología", "horaInicio": "09:00", "horaFin": "17:00" },
+  { "id": 3, "nombre": "Dra. Valentina Ríos", "especialidad": "Cirugía", "horaInicio": "07:00", "horaFin": "13:00" },
+  { "id": 4, "nombre": "Dr. Julián Herrera", "especialidad": "Odontología", "horaInicio": "13:00", "horaFin": "19:00" },
+  { "id": 5, "nombre": "Dra. Sofía Cárdenas", "especialidad": "Medicina felina", "horaInicio": "10:00", "horaFin": "16:00" }
+]
+```
+
+#### Ejemplo de `POST /api/citas`
+
+Usa un turno futuro devuelto por disponibilidad al ejecutar el ejemplo.
+
+```json
+{
+  "mascotaId": 3,
+  "veterinarioId": 1,
+  "fechaHora": "2026-11-20T09:30:00",
+  "tipoServicio": "VACUNACION"
+}
+```
+
+#### Ejemplo de `POST /api/citas/{id}/consulta`
+
+```json
+{
+  "tipoConsulta": "GENERAL",
+  "diagnostico": "Otitis leve",
+  "vacunasAplicadas": ["Rabia"],
+  "tratamientos": ["Gotas óticas 7 días"],
+  "examenes": [],
+  "cirugias": [],
+  "observaciones": "Control en 2 semanas",
+  "proximoControl": "2026-12-04"
+}
+```
+
+## Contrato que Citas consume de Mascotas y Dueños
+
+Citas lee `GET /api/mascotas/{id}` en Mascotas y Dueños, que responde la ficha plana con estos diez campos. Citas exige el `id` numérico solicitado, `nombre`, `especie` (`PERRO`, `GATO`, `AVE` u `OTRO`), `fechaNacimiento` en ISO sin fecha futura en `America/Bogota`, `duenoNombre` y `duenoEmail` con la forma `ana@correo.com`. Ignora los demás campos (`raza`, `peso`, `fotoUrl` y `duenoId`), que usa el frontend.
+
+Ficha de Tobby, de los datos de ejemplo.
+
+```json
+{
+  "id": 1,
+  "nombre": "Tobby",
+  "especie": "PERRO",
+  "raza": "Golden Retriever",
+  "fechaNacimiento": "2021-04-18",
+  "peso": 31.5,
+  "fotoUrl": "/mascotas/tobby.jpg",
+  "duenoId": 1,
+  "duenoNombre": "Laura Méndez",
+  "duenoEmail": "laura.mendez@correo.com"
+}
+```
+
+- Una mascota inexistente responde `404` con `RECURSO_NO_ENCONTRADO`, y Citas responde también `404`. Si Mascotas y Dueños no responde o falla, Citas responde `503`.
+- `fotoUrl` vale nulo si la mascota no tiene foto. Es una URL relativa al frontend en los datos de ejemplo y absoluta si se le subió una foto.
+- El adaptador de Citas acepta también el objeto anidado `dueno`, pero Mascotas y Dueños responde siempre el formato plano.
+
+## Eventos RabbitMQ
+
+Citas implementa la publicación en el exchange durable `petvet.events` de tipo `topic`. Notificaciones declara sus colas y las enlaza a ese exchange. El script de demo no crea colas: comprueba que los correos lleguen a MailHog.
+
+| Clave de enrutamiento | Cuándo se publica | Cola | Campos del mensaje |
+| --- | --- | --- | --- |
+| `cita.agendada` | Agendar una cita. | `notificaciones.citas` | `citaId`, `mascotaNombre`, `duenoNombre`, `duenoEmail`, `veterinarioNombre`, `fechaHora`, `tipoServicio` |
+| `cita.completada` | Registrar la consulta y completar la cita. | `notificaciones.citas` | `citaId`, `mascotaNombre`, `duenoNombre`, `duenoEmail`, `diagnostico`, `vacunasAplicadas`, `proximoControl`, `proximasVacunas`, `examenes` |
+| `vacuna.proxima` | Detectar una vacuna próxima en la tarea `@Scheduled`. | `notificaciones.vacunas` | `mascotaId`, `mascotaNombre`, `duenoNombre`, `duenoEmail`, `vacuna`, `fechaLimite` |
+
+En `cita.completada`, `vacunasAplicadas` es un arreglo de textos, `proximasVacunas` un arreglo de objetos `VacunaPendiente` y `proximoControl` una fecha de calendario o nulo. `examenes` es un arreglo con los nombres de los exámenes registrados en la consulta, vacío si no se registró ninguno; con él Notificaciones arma el aviso de exámenes sin un evento aparte. Los tres eventos traen `duenoNombre`, el nombre del dueño según la ficha de Mascotas y Dueños, para que el correo lo salude por su nombre. `examenes` y `duenoNombre` en `cita.completada`, y `duenoNombre` en `vacuna.proxima`, son campos nuevos: un mensaje que ya estaba en la outbox se publica tal como se guardó, sin ellos, así que el consumidor debe tomar `examenes` como lista vacía y `duenoNombre` como ausente. El campo numérico `mascotaId` de `vacuna.proxima` es una extensión local del plan.
+
+Notificaciones enlaza `notificaciones.citas` con `cita.*` y `notificaciones.vacunas` con `vacuna.*`, como detalla [Colas y enlaces](#colas-y-enlaces). Cada mensaje persistente tiene el cuerpo JSON en UTF-8 y un UUID estable en la propiedad AMQP `messageId`. La entrega es al menos una vez y Notificaciones deduplica por esa propiedad. Si RabbitMQ no está disponible o no hay cola enlazada, el evento queda pendiente en PostgreSQL para reintento.
+
+## Notificaciones
+
+`ms-notificaciones` escucha en el puerto `8083` y guarda sus datos en `postgres-notificaciones` (`5435`). Consume los eventos de Citas y envía un correo por evento al SMTP configurado. En local los correos llegan a MailHog, en `http://localhost:8025`.
+
+### Colas y enlaces
+
+Al arrancar, el servicio declara el exchange `petvet.events` igual que Citas: `topic`, durable y sin `autoDelete`. También declara sus colas y sus DLQ.
+
+| Cola | Enlace desde `petvet.events` | Mensajes rechazados | DLQ |
+| --- | --- | --- | --- |
+| `notificaciones.citas` | `cita.*` | `petvet.notificaciones.dlx` con la clave `notificaciones.citas.dlq` | `notificaciones.citas.dlq` |
+| `notificaciones.vacunas` | `vacuna.*` | `petvet.notificaciones.dlx` con la clave `notificaciones.vacunas.dlq` | `notificaciones.vacunas.dlq` |
+
+Las cuatro colas son durables. `petvet.notificaciones.dlx` es un exchange `direct` durable y enlaza cada DLQ con su propio nombre. Si ya existe una cola con el mismo nombre y otros argumentos, por ejemplo creada a mano sin DLQ, RabbitMQ rechaza la declaración con `PRECONDITION_FAILED`. En ese caso hay que borrar la cola antes de arrancar el servicio.
+
+### Procesamiento de los mensajes
+
+- Cada cola tiene un solo listener. El listener recibe el mensaje sin convertir y elige el caso de uso por la routing key: `cita.agendada`, `cita.completada` o `vacuna.proxima`. Si el mensaje se reenvió desde una DLQ, usa la propiedad `type`, que Citas llena con la misma clave.
+- El cuerpo se lee como JSON y se ignoran los campos desconocidos. `examenes` en `cita.completada` es opcional y, si llega, se lista en el resumen. `duenoNombre` es opcional en los tres eventos. Cuando el evento lo trae, el correo saluda por nombre.
+- Una clave que no genera notificación, como `cita.cancelada`, se registra en el log y se descarta.
+- Un mensaje sin `messageId`, con JSON inválido o sin un campo obligatorio se rechaza sin reencolar. Pasa directo a su DLQ, sin reintentos. Lo mismo pasa si el correo del dueño no es una dirección válida, como `laura,mendez@correo.com`, porque fallaría igual en cada intento.
+- Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces en total, con esperas de 1 s, 2 s, 4 s y 8 s. Así, un reinicio de MailHog de hasta unos 15 s no deja correos sin enviar. Si la falla continúa, el mensaje pasa a la DLQ y los demás mensajes siguen su curso.
+- Los mensajes de una DLQ se reprocesan cuando se corrige la causa, como se explica en la sección siguiente.
+
+### Reprocesar una DLQ
+
+El servicio `rabbitmq` del Compose activa los plugins `rabbitmq_shovel` y `rabbitmq_shovel_management` con el archivo `infra/rabbitmq/enabled_plugins`, montado de solo lectura. Con ellos, el panel de RabbitMQ mueve los mensajes de una DLQ a su cola. Los plugins se leen al arrancar: si RabbitMQ ya estaba arriba, `docker compose up -d rabbitmq` recrea el contenedor con ellos.
+
+1. Abrir `http://localhost:15672` con el usuario y la clave de RabbitMQ del `.env`, que por defecto son `petvet` y `petvet_local`.
+2. En "Queues and Streams", abrir `notificaciones.citas.dlq` o `notificaciones.vacunas.dlq`.
+3. En la sección "Move messages", escribir en "Destination queue" la cola original, `notificaciones.citas` o `notificaciones.vacunas`, y pulsar "Move messages".
+
+El panel crea un shovel temporal que mueve los mensajes que hay en la DLQ y después se borra solo. Cada mensaje conserva sus propiedades, entre ellas `messageId` y `type`, y llega por el exchange por defecto con el nombre de la cola como clave. El listener lo enruta por `type` y, como el `messageId` es el mismo, no repite un correo que ya se había enviado. Si vuelve a fallar, el mensaje regresa a la DLQ.
+
+Sin el panel, el mensaje se publica de nuevo en su cola con las mismas propiedades, por el exchange por defecto y con el nombre de la cola como clave. Debe llevar `messageId` y `type`: sin `type`, el listener lo descarta como clave desconocida.
+
+### Deduplicación
+
+La tabla `notificaciones` guarda una fila por correo enviado.
+
+| Columna | Contenido |
+| --- | --- |
+| `id` | Identificador generado. |
+| `message_id` | Propiedad AMQP `messageId`, que es el UUID de la outbox de Citas. Es única. |
+| `tipo` | `CITA_AGENDADA`, `CITA_COMPLETADA` o `VACUNA_PROXIMA`. |
+| `destino`, `asunto`, `cuerpo` | Correo enviado. |
+| `creada_en`, `enviada_en` | Instantes con zona horaria. |
+
+Todo ocurre en una transacción. Primero se inserta la fila con `INSERT ... ON CONFLICT (message_id) DO NOTHING`. Si el `messageId` ya existía, el mensaje se confirma sin enviar nada. Si es nuevo, el correo se envía de último. Si el SMTP falla, la transacción se deshace y el mensaje se reintenta. Solo puede quedar un duplicado si la base falla al confirmar después de que el SMTP aceptó el correo.
+
+### Correos
+
+Los correos son texto plano en UTF-8. El remitente por defecto es `PetVet <notificaciones@petvet.local>` y se cambia con `PETVET_NOTIFICACIONES_REMITENTE`, que el Compose toma del `.env`. Las fechas se escriben en español y la hora usa el formato de 24 horas. `PETVET_NOTIFICACIONES_ZONA` fija la zona con que se compara la fecha de las vacunas; por defecto es `America/Bogota`. En el Compose toma el valor de `PETVET_AGENDA_ZONA`, así que Notificaciones usa la misma zona que Citas.
+
+| Evento | Asunto |
+| --- | --- |
+| `cita.agendada` | `Confirmación de la cita de {mascota}` |
+| `cita.completada` | `Resumen de la consulta de {mascota}` |
+| `vacuna.proxima` | `Recordatorio: vacuna {vacuna} de {mascota}` |
+
+Los tres correos saludan al dueño por su nombre, porque Citas publica `duenoNombre` en los tres eventos. Un evento sin ese campo, como uno que ya estaba en la outbox antes de que Citas lo agregara, recibe el saludo `Hola:`.
+
+Ejemplo de `cita.agendada` con datos sintéticos.
+
+```text
+Hola, Laura Méndez:
+
+La cita de vacunación de Tobby con la Dra. Paula Castaño quedó para el viernes 20 de noviembre de 2026 a las 09:30.
+
+Si no puede asistir, cancele la cita en PetVet para liberar el turno.
+
+Equipo PetVet
+```
+
+Ejemplo de `cita.completada` con exámenes. Sin exámenes, la línea de exámenes no aparece. Si faltan datos, el correo dice `Vacunas aplicadas: ninguna`, `Próximo control: sin control programado` o `Próximas vacunas: ninguna pendiente`.
+
+```text
+Hola, Laura Méndez:
+
+Este es el resumen de la consulta de Tobby.
+
+Diagnóstico: Otitis leve
+Vacunas aplicadas: Rabia
+Exámenes registrados en la consulta: Hemograma, Otoscopia
+Próximo control: viernes 4 de diciembre de 2026
+
+Próximas vacunas:
+- Polivalente: antes del domingo 13 de diciembre de 2026
+- Rabia: antes del sábado 20 de noviembre de 2027
+
+Equipo PetVet
+```
+
+Ejemplo de `vacuna.proxima` para Max, el cachorro que registra `scripts/probar_citas.py` a nombre de Mariana Peña. Si la fecha límite es hoy, la frase dice `vence hoy, ...`, y si ya pasó, `venció el ...`.
+
+```text
+Hola, Mariana Peña:
+
+La vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.
+
+Puede agendar la cita de vacunación en PetVet.
+
+Equipo PetVet
+```
+
+### Consulta de lo enviado
+
+| Método y ruta | Uso |
+| --- | --- |
+| `GET /api/notificaciones?limite=20` | Listar las últimas notificaciones enviadas, de la más reciente a la más antigua. `limite` va de 1 a 100 y vale 20 por defecto. |
+| `GET /actuator/health` | Consultar la salud del servicio. |
+| `GET /v3/api-docs` | Consultar el documento OpenAPI en JSON. |
+| `GET /swagger-ui/index.html` | Abrir la interfaz de Swagger. |
+
+Ejemplo de respuesta de `GET /api/notificaciones?limite=1`.
+
+```json
+[
+  {
+    "id": 3,
+    "messageId": "6b1f3c2e-9d7a-4f0e-8c55-0a4b2d9e7f13",
+    "tipo": "VACUNA_PROXIMA",
+    "destino": "demo.citas.3f9a1c2b@example.test",
+    "asunto": "Recordatorio: vacuna Polivalente de Max",
+    "cuerpo": "Hola, Mariana Peña:\n\nLa vacuna Polivalente de su mascota Max va a vencer pronto. Aplíquela antes del lunes 16 de noviembre de 2026.\n\nPuede agendar la cita de vacunación en PetVet.\n\nEquipo PetVet\n",
+    "creadaEn": "2026-11-13T17:00:00.412318Z",
+    "enviadaEn": "2026-11-13T17:00:00.415027Z"
+  }
+]
+```
+
+Un límite fuera de rango responde `400` con el formato de error del servicio.
+
+```json
+{
+  "error": "DATOS_INVALIDOS",
+  "detalle": "El límite debe estar entre 1 y 100"
+}
+```
+
+La salud refleja PostgreSQL y RabbitMQ. El chequeo de correo está desactivado para que una caída de MailHog no marque el servicio como caído: en ese caso cada correo se reintenta durante unos 15 s y, si MailHog sigue caído, pasa a la DLQ.

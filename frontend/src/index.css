@@ -1,0 +1,116 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Identidad visual de PetVet (definida por Camilo y Daza).
+ * Todos los colores de la app salen de estos tokens: en las clases se usan
+ * sus nombres (bg-primary, text-muted-foreground, bg-brand-soft...),
+ * nunca colores sueltos. La fuente se carga desde Google Fonts en index.html.
+ * Solo hay modo claro.
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* Tokens de shadcn */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Tokens propios de PetVet */
+  --color-brand-soft: var(--brand-soft);
+  --color-alerta: var(--alerta);
+  --color-alerta-soft: var(--alerta-soft);
+  --color-alerta-texto: var(--alerta-texto);
+
+  /* Estados de cita (EstadoCitaBadge): fondo suave + texto */
+  --color-estado-agendada: var(--estado-agendada);
+  --color-estado-agendada-soft: var(--estado-agendada-soft);
+  --color-estado-completada: var(--estado-completada);
+  --color-estado-completada-soft: var(--estado-completada-soft);
+  --color-estado-cancelada: var(--estado-cancelada);
+  --color-estado-cancelada-soft: var(--estado-cancelada-soft);
+
+  /* Radios: base 10px; tarjetas (rounded-xl) 16px */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: 1rem;
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Base */
+  --background: #f7f8f7;
+  --foreground: #141a18;
+  --card: #ffffff;
+  --card-foreground: #141a18;
+  --popover: #ffffff;
+  --popover-foreground: #141a18;
+
+  /* Marca: verde clínico */
+  --primary: #1e5a4c;
+  --primary-foreground: #ffffff;
+  --ring: #1e5a4c;
+  --brand-soft: #e8f1ee; /* menú activo, avatares, selección */
+
+  /* Neutros */
+  --secondary: #eff1f0;
+  --secondary-foreground: #141a18;
+  --muted: #eff1f0;
+  --muted-foreground: #5b6661;
+  --accent: #e8f1ee; /* hover de menús y botones fantasma */
+  --accent-foreground: #141a18;
+  --border: #e3e8e5; /* bordes de tarjetas y separadores */
+  --input: #d5ddd9; /* bordes de inputs y botones secundarios */
+
+  --destructive: #b42318;
+
+  /* Alerta: solo para vacunas pendientes */
+  --alerta: #b86e00;
+  --alerta-soft: #fff3df;
+  --alerta-texto: #7a4900;
+
+  /* Estados de cita */
+  --estado-agendada: #24508f;
+  --estado-agendada-soft: #e5edfa;
+  --estado-completada: #1e6b4a;
+  --estado-completada-soft: #e3f1eb;
+  --estado-cancelada: #5b6661;
+  --estado-cancelada-soft: #eff1f0;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}

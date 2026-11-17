@@ -1,0 +1,184 @@
+name: petvet
+
+services:
+  postgres-mascotas:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mascotas
+      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - mascotas-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  postgres-citas:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: citas
+      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - citas-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  postgres-notificaciones:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: notificaciones
+      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - notificaciones-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${PETVET_RABBITMQ_USER:-petvet}
+      RABBITMQ_DEFAULT_PASS: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      # Plugins de la imagen más el shovel, que da "Move messages" en el panel para vaciar una DLQ.
+      - ./infra/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  ms-mascotas-duenos:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ms-mascotas-duenos/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mascotas:5432/mascotas
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      # La misma zona que Citas: una fecha de nacimiento futura significa lo mismo en los dos servicios.
+      PETVET_AGENDA_ZONA: ${PETVET_AGENDA_ZONA:-America/Bogota}
+      # Base de la fotoUrl de las fotos subidas. La usa el navegador, por eso apunta al puerto publicado.
+      PETVET_FOTOS_URL_BASE: ${PETVET_FOTOS_URL_BASE:-http://localhost:8081}
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      postgres-mascotas:
+        condition: service_healthy
+
+  ms-citas-historial:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ms-citas-historial/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-citas:5432/citas
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:-petvet}
+      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      # Nombre y puerto de Mascotas y Dueños dentro del Compose.
+      PETVET_MASCOTAS_URL: http://ms-mascotas-duenos:8081
+      PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      PETVET_AGENDA_ZONA: ${PETVET_AGENDA_ZONA:-America/Bogota}
+      PETVET_AGENDA_APERTURA: ${PETVET_AGENDA_APERTURA:-08:00}
+      PETVET_AGENDA_CIERRE: ${PETVET_AGENDA_CIERRE:-18:00}
+      PETVET_AGENDA_DURACION_MINUTOS: ${PETVET_AGENDA_DURACION_MINUTOS:-30}
+      # Revisión diaria. El Compose de demo ajusta el cron a cada minuto.
+      PETVET_VACUNAS_CRON: ${PETVET_VACUNAS_CRON:-0 0 8 * * *}
+      PETVET_VACUNAS_DIAS_AVISO: ${PETVET_VACUNAS_DIAS_AVISO:-7}
+      PETVET_VACUNAS_HABILITADAS: ${PETVET_VACUNAS_HABILITADAS:-true}
+      # El publicador reintenta los eventos pendientes de la outbox.
+      PETVET_EVENTOS_HABILITADOS: ${PETVET_EVENTOS_HABILITADOS:-true}
+      PETVET_EVENTOS_INTERVALO_MS: ${PETVET_EVENTOS_INTERVALO_MS:-5000}
+      # Con classpath:db/migration,classpath:db/demo se carga el historial de ejemplo.
+      SPRING_FLYWAY_LOCATIONS: ${PETVET_CITAS_MIGRACIONES:-classpath:db/migration}
+    ports:
+      - "127.0.0.1:8082:8082"
+    depends_on:
+      postgres-citas:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  ms-notificaciones:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: ms-notificaciones/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notificaciones:5432/notificaciones
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:-petvet}
+      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+      PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      # Misma zona que Citas, para que "vence hoy" en el correo coincida con la tarea de vacunas.
+      PETVET_NOTIFICACIONES_ZONA: ${PETVET_AGENDA_ZONA:-America/Bogota}
+      PETVET_NOTIFICACIONES_REMITENTE: "${PETVET_NOTIFICACIONES_REMITENTE:-PetVet <notificaciones@petvet.local>}"
+    ports:
+      - "127.0.0.1:8083:8083"
+    depends_on:
+      postgres-notificaciones:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  frontend:
+    profiles: [app]
+    build:
+      context: ./frontend
+      # Las URLs son las que usa el navegador (puertos publicados en localhost).
+      args:
+        VITE_API_MASCOTAS: http://localhost:8081/api
+        VITE_API_CITAS: http://localhost:8082/api
+        VITE_USE_MOCKS: ${PETVET_FRONT_USE_MOCKS:-false}
+    # 5173 es el origen permitido por CORS en los microservicios.
+    # Sin depends_on: el front se sirve aunque un servicio esté caído.
+    ports:
+      - "127.0.0.1:5173:80"
+
+volumes:
+  mascotas-data:
+  citas-data:
+  notificaciones-data:
+  rabbitmq-data:

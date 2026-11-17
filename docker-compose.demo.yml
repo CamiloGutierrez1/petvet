@@ -1,0 +1,10 @@
+# Demo sobre el perfil app: Citas consulta Mascotas y Dueños real (ms-mascotas-duenos:8081, del Compose
+# principal) y Notificaciones envía los correos a MailHog. Ver la demostración en el README.
+services:
+  ms-citas-historial:
+    environment:
+      # Revisa las vacunas cada minuto, para ver el recordatorio sin esperar a las 8:00.
+      PETVET_VACUNAS_CRON: "0 * * * * *"
+      # Agrega el historial de ejemplo de Tobby, Misha y Kiwi (db/demo/R__historial_demo.sql), las
+      # mascotas 1, 2 y 3 de los datos iniciales de Mascotas y Dueños.
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/demo
