@@ -57,6 +57,7 @@ Una falla pasajera, como el SMTP o la base caídos, se intenta 5 veces con esper
 
 ## Pendientes de integración
 
-- Sumar al frontend los campos que ya entrega la API: `documento` y `direccion` del dueño, `horaInicio` y `horaFin` del veterinario, y `cirugias` en la consulta y el historial. Hoy el frontend no los muestra ni los envía.
-- Hacer el recorrido en equipo desde el frontend contra la API real, incluidos los correos en MailHog.
-- Decidir si las mascotas que nunca han tenido una cita deben recibir recordatorios de vacunas. Para eso, Mascotas y Dueños necesitaría una ruta que liste todas las mascotas; hoy solo lista las de cada dueño.
+- Los campos `documento` y `direccion` del dueño, `horaInicio` y `horaFin` del veterinario y `cirugias` ya llegan al frontend (PR #31), y el recorrido en equipo desde el frontend contra la API real, con los correos en MailHog, se hizo el 14 de noviembre ([Demo y plan de pruebas](demo-y-pruebas.md)).
+- Queda por decidir si las mascotas que nunca han tenido una cita deben recibir recordatorios de vacunas. Para eso, Mascotas y Dueños necesitaría una ruta que liste todas las mascotas; hoy solo lista las de cada dueño.
+
+Las decisiones de arquitectura con sus alternativas y trade-offs están en formato ADR en [adr/](adr/README.md).
