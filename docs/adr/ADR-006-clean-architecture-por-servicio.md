@@ -1,4 +1,4 @@
-# ADR 0006: Clean Architecture dentro de cada servicio
+# ADR-006: Clean Architecture dentro de cada servicio
 
 - **Estado:** Aceptada
 - **Fecha:** 10 de noviembre de 2026
@@ -18,7 +18,7 @@ Los tres servicios usan las mismas cuatro capas, con dependencias hacia adentro:
 
 Los casos de uso reciben los puertos por constructor (DIP). En este marco viven los patrones del proyecto: Builder (`RegistroHistorialBuilder`), Strategy (`VacunacionStrategy`) y Adapter (`CorreoSmtpAdapter`).
 
-## Alternativas consideradas
+## Opciones evaluadas
 
 - **Capas clásicas controlador-servicio-repositorio:** menos clases, pero el servicio depende directamente de JPA y las reglas quedan mezcladas con la persistencia.
 - **Arquitectura distinta por servicio:** más libertad, pero se pierde la coherencia y cuesta más explicar y revisar.
