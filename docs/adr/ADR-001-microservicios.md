@@ -1,4 +1,4 @@
-# ADR 0001: Microservicios en lugar de un monolito
+# ADR-001: Microservicios en lugar de un monolito
 
 - **Estado:** Aceptada
 - **Fecha:** 10 de noviembre de 2026
@@ -17,7 +17,7 @@ Separar el sistema en tres microservicios Spring Boot, cada uno con su propia ba
 
 Se levantan juntos con Docker Compose y comparten un `pom.xml` raíz solo para las dependencias comunes.
 
-## Alternativas consideradas
+## Opciones evaluadas
 
 - **Monolito en capas:** más simple de levantar y de probar, con una sola base y transacciones locales. Se descartó porque una falla del correo o de un módulo afectaría a todo el sistema y porque el catálogo pide servicios independientes.
 - **Monolito modular:** módulos separados dentro de un solo proceso. Mejora la organización, pero no permite mostrar el fallo aislado de una parte ni la comunicación por eventos.

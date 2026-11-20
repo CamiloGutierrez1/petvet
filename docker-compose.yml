@@ -5,12 +5,13 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: mascotas
-      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
-      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      POSTGRES_USER: ${PETVET_DB_USER:?copia .env.example a .env}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:?copia .env.example a .env}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
       - mascotas-data:/var/lib/postgresql/data
+    networks: [red-mascotas]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
@@ -22,12 +23,13 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: citas
-      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
-      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      POSTGRES_USER: ${PETVET_DB_USER:?copia .env.example a .env}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:?copia .env.example a .env}
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
       - citas-data:/var/lib/postgresql/data
+    networks: [red-citas]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
@@ -39,12 +41,13 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: notificaciones
-      POSTGRES_USER: ${PETVET_DB_USER:-petvet}
-      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      POSTGRES_USER: ${PETVET_DB_USER:?copia .env.example a .env}
+      POSTGRES_PASSWORD: ${PETVET_DB_PASSWORD:?copia .env.example a .env}
     ports:
       - "127.0.0.1:5435:5432"
     volumes:
       - notificaciones-data:/var/lib/postgresql/data
+    networks: [red-notificaciones]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
@@ -56,8 +59,8 @@ services:
     image: rabbitmq:3-management
     hostname: rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: ${PETVET_RABBITMQ_USER:-petvet}
-      RABBITMQ_DEFAULT_PASS: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      RABBITMQ_DEFAULT_USER: ${PETVET_RABBITMQ_USER:?copia .env.example a .env}
+      RABBITMQ_DEFAULT_PASS: ${PETVET_RABBITMQ_PASSWORD:?copia .env.example a .env}
     ports:
       - "127.0.0.1:5672:5672"
       - "127.0.0.1:15672:15672"
@@ -65,6 +68,7 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       # Plugins de la imagen más el shovel, que da "Move messages" en el panel para vaciar una DLQ.
       - ./infra/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    networks: [red-eventos]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 5s
@@ -78,16 +82,22 @@ services:
     ports:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
+    networks: [red-correo]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 1025 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
 
   ms-mascotas-duenos:
-    profiles: [app]
     build:
       context: .
       dockerfile: ms-mascotas-duenos/Dockerfile
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-mascotas:5432/mascotas
-      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
-      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:?copia .env.example a .env}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:?copia .env.example a .env}
       PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       # La misma zona que Citas: una fecha de nacimiento futura significa lo mismo en los dos servicios.
       PETVET_AGENDA_ZONA: ${PETVET_AGENDA_ZONA:-America/Bogota}
@@ -95,22 +105,29 @@ services:
       PETVET_FOTOS_URL_BASE: ${PETVET_FOTOS_URL_BASE:-http://localhost:8081}
     ports:
       - "127.0.0.1:8081:8081"
+    # red-servicios: Citas consulta la ficha por REST. La base solo la ve este servicio.
+    networks: [red-mascotas, red-servicios]
+    healthcheck: &salud-servicio
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
     depends_on:
       postgres-mascotas:
         condition: service_healthy
 
   ms-citas-historial:
-    profiles: [app]
     build:
       context: .
       dockerfile: ms-citas-historial/Dockerfile
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-citas:5432/citas
-      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
-      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:?copia .env.example a .env}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:?copia .env.example a .env}
       SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:-petvet}
-      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:?copia .env.example a .env}
+      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:?copia .env.example a .env}
       # Nombre y puerto de Mascotas y Dueños dentro del Compose.
       PETVET_MASCOTAS_URL: http://ms-mascotas-duenos:8081
       PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
@@ -129,6 +146,12 @@ services:
       SPRING_FLYWAY_LOCATIONS: ${PETVET_CITAS_MIGRACIONES:-classpath:db/migration}
     ports:
       - "127.0.0.1:8082:8082"
+    networks: [red-citas, red-eventos, red-servicios]
+    healthcheck:
+      <<: *salud-servicio
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8082/actuator/health"]
+    # Sin depends_on de Mascotas a propósito: si Mascotas cae, Citas sigue arriba y responde 503
+    # solo en lo que necesita la ficha (ADR-005).
     depends_on:
       postgres-citas:
         condition: service_healthy
@@ -136,17 +159,16 @@ services:
         condition: service_healthy
 
   ms-notificaciones:
-    profiles: [app]
     build:
       context: .
       dockerfile: ms-notificaciones/Dockerfile
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notificaciones:5432/notificaciones
-      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:-petvet}
-      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:-petvet_local}
+      SPRING_DATASOURCE_USERNAME: ${PETVET_DB_USER:?copia .env.example a .env}
+      SPRING_DATASOURCE_PASSWORD: ${PETVET_DB_PASSWORD:?copia .env.example a .env}
       SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:-petvet}
-      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:-petvet_local}
+      SPRING_RABBITMQ_USERNAME: ${PETVET_RABBITMQ_USER:?copia .env.example a .env}
+      SPRING_RABBITMQ_PASSWORD: ${PETVET_RABBITMQ_PASSWORD:?copia .env.example a .env}
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
       PETVET_CORS_ALLOWED_ORIGINS: ${PETVET_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
@@ -155,16 +177,19 @@ services:
       PETVET_NOTIFICACIONES_REMITENTE: "${PETVET_NOTIFICACIONES_REMITENTE:-PetVet <notificaciones@petvet.local>}"
     ports:
       - "127.0.0.1:8083:8083"
+    networks: [red-notificaciones, red-eventos, red-correo]
+    healthcheck:
+      <<: *salud-servicio
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8083/actuator/health"]
     depends_on:
       postgres-notificaciones:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
       mailhog:
-        condition: service_started
+        condition: service_healthy
 
   frontend:
-    profiles: [app]
     build:
       context: ./frontend
       # Las URLs son las que usa el navegador (puertos publicados en localhost).
@@ -176,6 +201,26 @@ services:
     # Sin depends_on: el front se sirve aunque un servicio esté caído.
     ports:
       - "127.0.0.1:5173:80"
+    # El front no habla con los servicios por la red de Docker: es el navegador el que llama a 8081 y 8082.
+    networks: [red-frontend]
+    healthcheck:
+      # 127.0.0.1 y no "localhost": en alpine localhost resuelve a IPv6 y nginx escucha en IPv4.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+# Redes propias: cada base solo es visible para su servicio, RabbitMQ solo para quien publica o consume
+# eventos y MailHog solo para Notificaciones (ADR-013).
+networks:
+  red-mascotas:
+  red-citas:
+  red-notificaciones:
+  red-eventos:
+  red-servicios:
+  red-correo:
+  red-frontend:
 
 volumes:
   mascotas-data:

@@ -1,17 +1,17 @@
-# ADR 0002: Una base PostgreSQL por servicio
+# ADR-002: Una base PostgreSQL por servicio
 
 - **Estado:** Aceptada
 - **Fecha:** 10 de noviembre de 2026
 
 ## Contexto
 
-Con microservicios ([ADR 0001](0001-microservicios.md)), compartir una base haría que un cambio de tabla en un servicio rompa a los otros, y los acoplaría por debajo aunque sus APIs estén separadas.
+Con microservicios ([ADR-001](ADR-001-microservicios.md)), compartir una base haría que un cambio de tabla en un servicio rompa a los otros, y los acoplaría por debajo aunque sus APIs estén separadas.
 
 ## Decisión
 
-Cada servicio tiene su propia base PostgreSQL 16 en su propio contenedor (`postgres-mascotas`, `postgres-citas` y `postgres-notificaciones`), y Flyway versiona su esquema. Ningún servicio lee la base de otro: si Citas necesita los datos de una mascota, los pide por REST ([ADR 0005](0005-rest-sincrono-citas-a-mascotas.md)).
+Cada servicio tiene su propia base PostgreSQL 16 en su propio contenedor (`postgres-mascotas`, `postgres-citas` y `postgres-notificaciones`), y Flyway versiona su esquema. Ningún servicio lee la base de otro: si Citas necesita los datos de una mascota, los pide por REST ([ADR-005](ADR-005-rest-sincrono-citas-a-mascotas.md)).
 
-## Alternativas consideradas
+## Opciones evaluadas
 
 - **Una base compartida con esquemas separados:** menos contenedores, pero cualquier servicio podría leer las tablas de otro y el aislamiento quedaría solo en la disciplina del equipo.
 - **Una base compartida sin separación:** permite consultas con `JOIN` entre mascotas y citas, pero es un monolito de datos.

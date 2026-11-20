@@ -1,4 +1,4 @@
-# ADR 0008: SPA en React con capa de API y mocks
+# ADR-008: SPA en React con capa de API y mocks
 
 - **Estado:** Aceptada
 - **Fecha:** 10 de noviembre de 2026
@@ -17,7 +17,7 @@ Una SPA en React 19 con TypeScript y Vite, organizada así:
 - Errores con el formato del back (`{error, detalle}`): la vista muestra el `detalle` en su sitio y lo demás sale como aviso global.
 - Code splitting por ruta con `React.lazy`.
 
-## Alternativas consideradas
+## Opciones evaluadas
 
 - **Llamar a la API desde cada componente con `fetch`:** más directo, pero repite la lógica de errores y de carga y acopla las vistas al back.
 - **Renderizado en el servidor (Next.js o plantillas de Spring):** innecesario para una aplicación interna sin requisitos de SEO, y mezcla el front con el back.
